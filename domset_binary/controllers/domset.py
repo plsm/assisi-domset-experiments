@@ -48,7 +48,8 @@ class DomsetController(Thread):
         '''
 
         self._Td = 0.1 # Sample time for sensor readings is 0.1 second
-        self._temp_control_freq = 1.0 / 5.0 # Sample frequency for temperature control in seconds is once in 5 seconds
+        Ttemp = 2.0 # discretisation period
+        self._temp_control_freq = 1.0 / Ttemp # Sample frequency for temperature control in seconds is once in 5 seconds
         self.time_start = time.time()
         self._time_length = 1200.0
         self.t_prev = time.time()
@@ -57,7 +58,7 @@ class DomsetController(Thread):
 
         # sensor activity variables - denote bee presence
         self.activeSensors = [0]
-        self._sensors_buf_len = 20 # last 2 sec?
+        self._sensors_buf_len = 10 * Ttemp # last 2 sec?
         self.ir_thresholds = [25000, 25000, 25000, 25000, 25000, 25000]
         self.integrate_activity = 0.0
         self.average_activity = 0.0
@@ -69,8 +70,8 @@ class DomsetController(Thread):
 
         # constants for temperature control
         self._integration_limit = 100.0
-        self._integrate_limit_lower = 2
-        self._integrate_limit_upper = 4
+        self._integrate_limit_lower = 10.0 / Ttemp
+        self._integrate_limit_upper = 20.0 / Ttemp
         self._stop_initial_heating = 10
         self._inflection_heat = 0.17
         self._inflection_cool = 0.55
