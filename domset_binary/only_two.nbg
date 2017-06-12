@@ -1,0 +1,6 @@
+digraph arena_only_two {
+    subgraph "beearena" {
+        "casu-004" -> "casu-005" [ label = "casu-005" ]
+        "casu-005" -> "casu-004" [ label = "casu-004" ]
+    }
+}

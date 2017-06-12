@@ -1,0 +1,54 @@
+# Deployment specification file
+# For each casu in the arena, we need to specifiy:
+#     - the hostname of the target machine
+#     - the controller and additional files to deploy
+
+beearena : 
+    casu-001 : 
+        hostname : bbg-001
+        user : assisi
+        prefix : deploy
+        controller: controllers/sit_and_listen.py
+        # The brackets around additional files are necessary,
+        # because the deployment tool expects a list!
+        extra : []
+    casu-002 : 
+        hostname : bbg-001
+        user : assisi
+        prefix : deploy
+        controller: controllers/sit_and_listen.py
+    casu-003 : 
+        hostname : bbg-001
+        user : assisi
+        prefix : deploy
+        controller: controllers/sit_and_listen.py
+    casu-004 : 
+        hostname : bbg-001
+        user : assisi
+        prefix : deploy
+        controller: controllers/sit_and_listen.py
+    casu-005 : 
+        hostname : bbg-002
+        user : assisi
+        prefix : deploy
+        controller: controllers/sit_and_listen.py
+    casu-006 : 
+        hostname : bbg-002
+        user : assisi
+        prefix : deploy
+        controller: controllers/sit_and_listen.py
+    casu-007 : 
+        hostname : bbg-002
+        user : assisi
+        prefix : deploy
+        controller: controllers/sit_and_listen.py
+    casu-008 : 
+        hostname : bbg-002
+        user : assisi
+        prefix : deploy
+        controller: controllers/sit_and_listen.py
+    casu-009 : 
+        hostname : bbg-003
+        user : assisi
+        prefix : deploy
+        controller: controllers/sit_and_listen.py

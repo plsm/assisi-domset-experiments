@@ -1,0 +1,10 @@
+# This file describes a deployment project
+
+# Arena description file
+arena : only_two.arena
+
+# Neighborhood graph
+nbg : only_two.nbg
+
+# Deployment specification
+dep : only_two.dep

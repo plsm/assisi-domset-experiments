@@ -1,0 +1,22 @@
+# Configuration file describing a 4x4 arena
+
+# the position of the CASUs in reality and GUI is identical
+
+# Layer names can be assigned arbitrarily,
+# as long as they consist only of letters, dashes and underscores
+
+beearena :
+    # Casu names have to start with casu- in order for
+    # automatic spawning to work; they are also only
+    # allowed to contain letters, dashes and underscores
+    casu-004 :
+        pose : {x : -9, y : 18, yaw : 0}
+        sub_addr : tcp://bbg-003:1555
+        pub_addr : tcp://bbg-003:1556
+        msg_addr : tcp://bbg-003:50301
+
+    casu-005 :
+        pose : {x : 0, y : 18, yaw : 0}
+        sub_addr : tcp://bbg-003:2555
+        pub_addr : tcp://bbg-003:2556
+        msg_addr : tcp://bbg-003:50302
