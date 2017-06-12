@@ -32,6 +32,8 @@ class DomsetController(Thread):
             self.nbg_data_buffer[nb] = []
             if nb < self.casu_id:
                 self._is_master = 0
+
+        print("CASU: " + str(self.casu_id) + ", group size: " + str(self.group_size))
         '''
         if self._is_master == 0:
             master_id = self.casu_id
@@ -48,10 +50,10 @@ class DomsetController(Thread):
         self._Td = 0.1 # Sample time for sensor readings is 0.1 second
         self._temp_control_freq = 1.0 / 5.0 # Sample frequency for temperature control in seconds is once in 5 seconds
         self.time_start = time.time()
-        self._time_length = 2000.0
+        self._time_length = 1200.0
         self.t_prev = time.time()
         self.stop_flag = Event()
-        self.temp_ref = 28.0
+        self.temp_ref = 30.0
 
         # sensor activity variables - denote bee presence
         self.activeSensors = [0]
@@ -106,6 +108,9 @@ class DomsetController(Thread):
 
         self.casu.diagnostic_led_standby()
 
+    def initialize_temperature(self):
+
+        self.casu.set_temp(self.temp_ref)
 
     def update(self):
 
@@ -113,36 +118,34 @@ class DomsetController(Thread):
         self.t_prev = time.time()
         casu_id = self.casu_id
 
+        # calculate local ir sensor activity over time
+        self.calculate_self_average_activity()
         if self._is_master:
-            # calculate local ir sensor activity over time
-            self.calculate_self_average_activity()
-
-            # receive group ir readings
-            updated_all = False
-            while not updated_all:
-                msg = self.casu.read_message()
-                if msg:
-                    nbg_id = int(msg['sender'][-3:])
-                    #print('received message from: ' + str(nbg_id) + ' saying: ' + str(msg['data']))
-                    self.nbg_data_buffer[nbg_id].append(msg['data'])
-                    #print(self.nbg_data_buffer[nbg_id])
-                    # Check if we now have at least one message from each neighbor
-                    updated_all = True
-                    for nbg in self.nbg_data_buffer:
-                        if not self.nbg_data_buffer[nbg]:
-                            print('+++ missing ir readings +++ ' + str(nbg))
-                            updated_all = False
+            if (self.group_size > 1):
+                # receive group ir readings
+                updated_all = False
+                while not updated_all:
+                    msg = self.casu.read_message()
+                    if msg:
+                        nbg_id = int(msg['sender'][-3:])
+                        #print('received message from: ' + str(nbg_id) + ' saying: ' + str(msg['data']))
+                        self.nbg_data_buffer[nbg_id].append(msg['data'])
+                        #print(self.nbg_data_buffer[nbg_id])
+                        # Check if we now have at least one message from each neighbor
+                        updated_all = True
+                        for nbg in self.nbg_data_buffer:
+                            if not self.nbg_data_buffer[nbg]:
+                                print('+++ missing ir readings +++ ' + str(nbg))
+                                updated_all = False
                         #else:
                             #self.nbg_data_buffer[nbg_id].pop(0)
-
             # calculate cumulative sensor activity of a group --> temperature control
             self.calculate_sensor_activity()
             self.calculate_temp_ref()
-            for nbg in self.casu._Casu__neighbors:
-                self.casu.send_message(nbg,json.dumps(self.temp_ref))
+            if (self.group_size > 1):
+                for nbg in self.casu._Casu__neighbors:
+                    self.casu.send_message(nbg,json.dumps(self.temp_ref))
         else:
-            self.calculate_self_average_activity()
-
             # send self ir readings to group master
             master_id = casu_id
             master = self.casu
@@ -174,12 +177,14 @@ class DomsetController(Thread):
     def run(self):
         # Just call update every Td
         self.i = 0
-        while not self.stop_flag.wait(self._Td):
+        while (time.time() - self.time_start < self._time_length) and not (self.stop_flag.wait(self._Td)):
             self.update_activeSensors_estimate()
             self.i += 1
             if (self.i >= 1 / (self._Td * float(self._temp_control_freq))):
+                #print(str(self.casu_id) + ' ' + str(self.t_prev - self.time_start))
                 self.update()
                 self.i = 0
+        print("Done")
 
     def update_activeSensors_estimate(self):
         """
@@ -199,6 +204,7 @@ class DomsetController(Thread):
         try:
             if len(activeSensors) > 0:
                 self.average_activity = sum(activeSensors) / float(len(activeSensors))
+                self.maximum_activity = self.average_activity
             else:
                 self.average_activity = -1
         except:
@@ -265,6 +271,11 @@ class DomsetController(Thread):
         else:
             cool = 0.0
 
+        #print(" maximum_activity " + str(self.maximum_activity)+ " scaling_cool " + str(scaling_cool))
+        #print("heat_float " + str(self.heat_float) + " heat " + str(heat))
+        #print("temp_ctrl " + str(self.temp_ctrl))
+        #print("cool_float " + str(self.cool_float) + " cool " + str(cool))
+
         d_t_ref = 0.0
         if (heat == 1.0):
             d_t_ref = self._step_heat * self.group_size
@@ -277,8 +288,8 @@ class DomsetController(Thread):
         self.temp_ref = self.temp_ref + d_t_ref
         if self.temp_ref > 36:
             self.temp_ref = 36
-        if self.temp_ref < 26:
-            self.temp_ref = 26
+        if self.temp_ref < 28:
+            self.temp_ref = 28
         if not (self.temp_ref_old == self.temp_ref):
             print('new temperature reference ')
 
@@ -291,5 +302,6 @@ if __name__ == '__main__':
 
     # Initialize domset algorithm
     ctrl = DomsetController(rtc, log=True)
-    #ctrl.calibrate_ir_thresholds()
+    ctrl.calibrate_ir_thresholds()
+    ctrl.initialize_temperature()
     ctrl.start()
