@@ -1,0 +1,34 @@
+# Configuration file describing a 2x2 arena
+
+# the position of the CASUs in reality and GUI is not identical
+
+# Layer names can be assigned arbitrarily,
+# as long as they consist only of letters, dashes and underscores
+
+beearena :
+    # Casu names have to start with casu- in order for
+    # automatic spawning to work; they are also only
+    # allowed to contain letters, dashes and underscores
+    casu-006 :
+        pose : {x : -13.5, y : 18, yaw : 0}
+        sub_addr : tcp://bbg-001:3555
+        pub_addr : tcp://bbg-001:3556
+        msg_addr : tcp://bbg-001:50103
+
+    casu-007 :
+        pose : {x : -4.5, y : 18, yaw : 0}
+        sub_addr : tcp://bbg-001:4555
+        pub_addr : tcp://bbg-001:4556
+        msg_addr : tcp://bbg-001:50304
+
+    casu-008 :
+        pose : {x : 4.5, y : 18, yaw : 0}
+        sub_addr : tcp://bbg-002:2555
+        pub_addr : tcp://bbg-002:2556
+        msg_addr : tcp://bbg-002:50302
+
+    casu-009 :
+        pose : {x : 13.5, y : 18, yaw : 0}
+        sub_addr : tcp://bbg-004:1555
+        pub_addr : tcp://bbg-004:1556
+        msg_addr : tcp://bbg-004:50301

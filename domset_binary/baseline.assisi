@@ -1,0 +1,10 @@
+# This file describes a deployment project
+
+# Arena description file
+arena : baseline.arena
+
+# Neighborhood graph
+nbg : baseline.nbg
+
+# Deployment specification
+dep : baseline.dep
