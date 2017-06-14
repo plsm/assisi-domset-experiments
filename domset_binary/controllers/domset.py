@@ -48,13 +48,13 @@ class DomsetController(Thread):
         '''
 
         self._Td = 0.1 # Sample time for sensor readings is 0.1 second
-        Ttemp = 2.0 # discretisation period
+        Ttemp = 5.0 # discretisation period
         self._temp_control_freq = 1.0 / Ttemp # Sample frequency for temperature control in seconds is once in 5 seconds
         self.time_start = time.time()
         self._time_length = 1200.0
         self.t_prev = time.time()
         self.stop_flag = Event()
-        self.temp_ref = 30.0
+        self.temp_ref = 28.0
 
         # sensor activity variables - denote bee presence
         self.activeSensors = [0]
@@ -74,14 +74,14 @@ class DomsetController(Thread):
         self._integrate_limit_upper = 20.0 / Ttemp
         self._stop_initial_heating = 10
         self._inflection_heat = 0.17
-        self._inflection_cool = 0.55
+        self._inflection_cool = 0.85
         self._start_heat = 0.0
         self._stop_heat = 0.7
-        self._start_cool = 0.1
+        self._start_cool = 0.2
         self._stop_cool = 0.5
         self._rho = 0.85
-        self._step_heat = 0.1
-        self._step_cool = 0.07
+        self._step_heat = 0.05
+        self._step_cool = 0.03
 
         # Set up zeta logging
         now_str = datetime.now().__str__().split('.')[0]
@@ -257,20 +257,21 @@ class DomsetController(Thread):
         scaling_heat = (1.0 - progress_heat) * self._start_heat + progress_heat * self._stop_heat
         scaling_cool = (1.0 - progress_cool) * self._start_cool + progress_cool * self._stop_cool
 
-        self.heat_float = (1 - self._rho) * self.heat_float
-        if (self.average_activity > scaling_heat) and (self.temp_ctrl > 0) or (self.initial_heating > 1):
-             self.heat_float += self._rho * 1.0
-        if (self.heat_float > 0.5):
-            heat = 1.0
-        else:
-            heat = 0.0
         self.cool_float = (1.0 - self._rho) * self.cool_float
-        if (self.maximum_activity < scaling_cool) and (heat == 0) and (self.temp_ctrl > 0):
+        if (self.maximum_activity < scaling_cool) and (self.temp_ctrl > 0):
             self.cool_float += self._rho * 1.0
         if (self.cool_float > 0.5):
             cool = 1.0
         else:
             cool = 0.0
+
+        self.heat_float = (1 - self._rho) * self.heat_float
+        if (self.average_activity > scaling_heat) and (self.temp_ctrl > 0) and (cool == 0.0):
+             self.heat_float += self._rho * 1.0
+        if (self.heat_float > 0.5) and (cool == 0.0):
+            heat = 1.0
+        else:
+            heat = 0.0
 
         #print(" maximum_activity " + str(self.maximum_activity)+ " scaling_cool " + str(scaling_cool))
         #print("heat_float " + str(self.heat_float) + " heat " + str(heat))
@@ -289,8 +290,8 @@ class DomsetController(Thread):
         self.temp_ref = self.temp_ref + d_t_ref
         if self.temp_ref > 36:
             self.temp_ref = 36
-        if self.temp_ref < 28:
-            self.temp_ref = 28
+        if self.temp_ref < 26:
+            self.temp_ref = 26
         if not (self.temp_ref_old == self.temp_ref):
             print('new temperature reference ')
 
