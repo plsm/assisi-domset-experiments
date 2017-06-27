@@ -78,7 +78,6 @@ class DomsetController(Thread):
         self._stop_initial_heating = 10
         self._inflection_heat = 0.17
         self._inflection_cool = 0.85
-<<<<<<< HEAD
         self._start_heat = 0.050
         self._stop_heat = 1/3
         self._start_cool = 1/6
@@ -87,15 +86,6 @@ class DomsetController(Thread):
         self._step_heat = 0.05
         self._step_cool = 0.03
         self._epsilon = 0.3
-=======
-        self._start_heat = 0.0
-        self._stop_heat = 0.7
-        self._start_cool = 0.2
-        self._stop_cool = 0.5
-        self._rho = 0.85
-        self._step_heat = 0.05
-        self._step_cool = 0.03
->>>>>>> 8dd3ab8e315d35c4e2d72a4e176ac58515bfbcd0
 
         # Set up zeta logging
         now_str = datetime.now().__str__().split('.')[0]
@@ -302,10 +292,7 @@ class DomsetController(Thread):
         scaling_cool = (1.0 - progress_cool) * self._start_cool + progress_cool * self._stop_cool
 
         self.cool_float = (1.0 - self._rho) * self.cool_float
-<<<<<<< HEAD
         #if ((self.maximum_activity < scaling_cool) or (self.minimum_activity == 0.0)) and (self.temp_ctrl > 0):
-=======
->>>>>>> 8dd3ab8e315d35c4e2d72a4e176ac58515bfbcd0
         if (self.maximum_activity < scaling_cool) and (self.temp_ctrl > 0):
             self.cool_float += self._rho * 1.0
         if (self.cool_float > 0.5):
@@ -321,19 +308,12 @@ class DomsetController(Thread):
         else:
             heat = 0.0
 
-<<<<<<< HEAD
         if int(self.casu_id) == 13:
             print(" maximum_activity " + str(self.maximum_activity)+ " scaling_cool " + str(scaling_cool))
             print("minimum activity " + str(self.minimum_activity))
             print("cool_float " + str(self.cool_float) + " cool " + str(cool))
             print("heat_float " + str(self.heat_float) + " heat " + str(heat))
             print("temp_ctrl " + str(self.temp_ctrl))
-=======
-        #print(" maximum_activity " + str(self.maximum_activity)+ " scaling_cool " + str(scaling_cool))
-        #print("heat_float " + str(self.heat_float) + " heat " + str(heat))
-        #print("temp_ctrl " + str(self.temp_ctrl))
-        #print("cool_float " + str(self.cool_float) + " cool " + str(cool))
->>>>>>> 8dd3ab8e315d35c4e2d72a4e176ac58515bfbcd0
 
         d_t_ref = 0.0
         if (heat == 1.0):
