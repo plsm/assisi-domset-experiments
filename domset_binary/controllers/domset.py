@@ -48,13 +48,15 @@ class DomsetController(Thread):
         '''
 
         self._Td = 0.1 # Sample time for sensor readings is 0.1 second
-        Ttemp = 2.0 # discretisation period
+        Ttemp = 5.0 # discretisation period
         self._temp_control_freq = 1.0 / Ttemp # Sample frequency for temperature control in seconds is once in 5 seconds
         self.time_start = time.time()
-        self._time_length = 1200.0
+        self._time_length = 1500.0
+        self._time_length_cool = self._time_length * 0.5
+        self._time_length_heat = self._time_length * 0.5
         self.t_prev = time.time()
         self.stop_flag = Event()
-        self.temp_ref = 30.0
+        self.temp_ref = 28.0
 
         # sensor activity variables - denote bee presence
         self.activeSensors = [0]
@@ -63,6 +65,7 @@ class DomsetController(Thread):
         self.integrate_activity = 0.0
         self.average_activity = 0.0
         self.maximum_activity = 0.0
+        self.minimum_activity = 1.0
         self.temp_ctrl = 0
         self.initial_heating = 0
         self.heat_float = 0.0
@@ -74,14 +77,15 @@ class DomsetController(Thread):
         self._integrate_limit_upper = 20.0 / Ttemp
         self._stop_initial_heating = 10
         self._inflection_heat = 0.17
-        self._inflection_cool = 0.55
-        self._start_heat = 0.0
-        self._stop_heat = 0.7
-        self._start_cool = 0.1
-        self._stop_cool = 0.5
+        self._inflection_cool = 0.85
+        self._start_heat = 0.050
+        self._stop_heat = 1/3
+        self._start_cool = 1/6
+        self._stop_cool = 1/3
         self._rho = 0.85
-        self._step_heat = 0.1
-        self._step_cool = 0.07
+        self._step_heat = 0.05
+        self._step_cool = 0.03
+        self._epsilon = 0.3
 
         # Set up zeta logging
         now_str = datetime.now().__str__().split('.')[0]
@@ -106,6 +110,16 @@ class DomsetController(Thread):
 
         self.ir_thresholds = [max(buff)+margin for buff in ir_raw_buffers]
         print(self.casu.name(), self.ir_thresholds)
+
+        self.casu.diagnostic_led_standby()
+
+    def initial_wait(self, duration = 60):
+        self.casu.set_diagnostic_led_rgb(r = 1, g = 1, b = 1)
+
+        t_start = time.time()
+
+        while time.time() - t_start < duration:
+            time.sleep(0.1)
 
         self.casu.diagnostic_led_standby()
 
@@ -136,7 +150,7 @@ class DomsetController(Thread):
                         updated_all = True
                         for nbg in self.nbg_data_buffer:
                             if not self.nbg_data_buffer[nbg]:
-                                print('+++ missing ir readings +++ ' + str(nbg))
+                                #print('+++ missing ir readings +++ ' + str(nbg))
                                 updated_all = False
                         #else:
                             #self.nbg_data_buffer[nbg_id].pop(0)
@@ -177,8 +191,13 @@ class DomsetController(Thread):
 
     def run(self):
         # Just call update every Td
+        self.time_start = time.time()
         self.i = 0
+        self.time_index = 1
         while (time.time() - self.time_start < self._time_length) and not (self.stop_flag.wait(self._Td)):
+            if (time.time() - self.time_start > self.time_index * 100) and (time.time() - self.time_start < self.time_index * 100 + 1):
+                print(self.time_index * 100)
+                self.time_index += 1
             self.update_activeSensors_estimate()
             self.i += 1
             if (self.i >= 1 / (self._Td * float(self._temp_control_freq))):
@@ -206,10 +225,15 @@ class DomsetController(Thread):
             if len(activeSensors) > 0:
                 self.average_activity = sum(activeSensors) / float(len(activeSensors))
                 self.maximum_activity = self.average_activity
+                self.minimum_activity = self.average_activity
             else:
                 self.average_activity = -1
+                self.maximum_activity = 0
+                self.minimum_activity = 1
         except:
             self.average_activity = -1
+            self.maximum_activity = 0
+            self.minimum_activity = 1
 
     def calculate_sensor_activity(self):
         group_functional = self.group_size
@@ -217,6 +241,7 @@ class DomsetController(Thread):
         if self.average_activity == -1:
             self.average_activity = 0
             self.maximum_activity = 0
+            self.minimum_activity = 1
             group_functional -= 1
 
 #        print('self.group_size ' + str(self.group_size))
@@ -228,6 +253,8 @@ class DomsetController(Thread):
                 self.average_activity += tmp
                 if self.maximum_activity < tmp:
                     self.maximum_activity = tmp
+                if self.minimum_activity > tmp:
+                    self.minimum_activity = tmp
             else:
                 group_functional -= 1
 
@@ -251,31 +278,42 @@ class DomsetController(Thread):
             self.initial_heating = 0
 
         i_n = (self.t_prev - self.time_start) / self._time_length;
-        progress = 1.0 - 1.0 / (1.0 - i_n)
+        i_n_cool = ((self.t_prev - self.time_start) / self._time_length_cool)
+        i_n_heat = ((self.t_prev - self.time_start) / self._time_length_heat)
+        if i_n_cool >= 1:
+            i_n_cool = 0.99
+        if i_n_heat >= 1:
+            i_n_heat = 0.99
+        progress = 1.0 - 1.0 / (1.0 - i_n_heat)
         progress_heat = 1 - exp(self._inflection_heat * progress)
+        progress = 1.0 - 1.0 / (1.0 - i_n_cool)
         progress_cool = 1 - exp(self._inflection_cool * progress)
         scaling_heat = (1.0 - progress_heat) * self._start_heat + progress_heat * self._stop_heat
         scaling_cool = (1.0 - progress_cool) * self._start_cool + progress_cool * self._stop_cool
 
-        self.heat_float = (1 - self._rho) * self.heat_float
-        if (self.average_activity > scaling_heat) and (self.temp_ctrl > 0) or (self.initial_heating > 1):
-             self.heat_float += self._rho * 1.0
-        if (self.heat_float > 0.5):
-            heat = 1.0
-        else:
-            heat = 0.0
         self.cool_float = (1.0 - self._rho) * self.cool_float
-        if (self.maximum_activity < scaling_cool) and (heat == 0) and (self.temp_ctrl > 0):
+        #if ((self.maximum_activity < scaling_cool) or (self.minimum_activity == 0.0)) and (self.temp_ctrl > 0):
+        if (self.maximum_activity < scaling_cool) and (self.temp_ctrl > 0):
             self.cool_float += self._rho * 1.0
         if (self.cool_float > 0.5):
             cool = 1.0
         else:
             cool = 0.0
 
-        #print(" maximum_activity " + str(self.maximum_activity)+ " scaling_cool " + str(scaling_cool))
-        #print("heat_float " + str(self.heat_float) + " heat " + str(heat))
-        #print("temp_ctrl " + str(self.temp_ctrl))
-        #print("cool_float " + str(self.cool_float) + " cool " + str(cool))
+        self.heat_float = (1 - self._rho) * self.heat_float
+        if (self.average_activity > scaling_heat) and (self.temp_ctrl > 0) and (cool == 0.0):
+             self.heat_float += self._rho * 1.0
+        if (self.heat_float > 0.5) and (cool == 0.0):
+            heat = 1.0
+        else:
+            heat = 0.0
+
+        if int(self.casu_id) == 13:
+            print(" maximum_activity " + str(self.maximum_activity)+ " scaling_cool " + str(scaling_cool))
+            print("minimum activity " + str(self.minimum_activity))
+            print("cool_float " + str(self.cool_float) + " cool " + str(cool))
+            print("heat_float " + str(self.heat_float) + " heat " + str(heat))
+            print("temp_ctrl " + str(self.temp_ctrl))
 
         d_t_ref = 0.0
         if (heat == 1.0):
@@ -289,8 +327,8 @@ class DomsetController(Thread):
         self.temp_ref = self.temp_ref + d_t_ref
         if self.temp_ref > 36:
             self.temp_ref = 36
-        if self.temp_ref < 28:
-            self.temp_ref = 28
+        if self.temp_ref < 26:
+            self.temp_ref = 26
         if not (self.temp_ref_old == self.temp_ref):
             print('new temperature reference ')
 
@@ -305,4 +343,5 @@ if __name__ == '__main__':
     ctrl = DomsetController(rtc, log=True)
     ctrl.calibrate_ir_thresholds()
     ctrl.initialize_temperature()
+    ctrl.initial_wait()
     ctrl.start()
