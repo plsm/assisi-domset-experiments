@@ -53,7 +53,7 @@ class DomsetController(Thread):
         self.time_start = time.time()
         self._time_length = 1500.0
         self._time_length_cool = self._time_length * 0.5
-        self._time_length_heat = self._time_length * 0.5
+        self._time_length_heat = self._time_length * 0.3333
         self.t_prev = time.time()
         self.stop_flag = Event()
         self.temp_ref = 28.0
@@ -78,10 +78,10 @@ class DomsetController(Thread):
         self._stop_initial_heating = 10
         self._inflection_heat = 0.17
         self._inflection_cool = 0.85
-        self._start_heat = 0.050
-        self._stop_heat = 1/3
-        self._start_cool = 1/6
-        self._stop_cool = 1/3
+        self._start_heat = 0.1
+        self._stop_heat = 0.7
+        self._start_cool = 0.2
+        self._stop_cool = 0.5
         self._rho = 0.85
         self._step_heat = 0.05
         self._step_cool = 0.03
