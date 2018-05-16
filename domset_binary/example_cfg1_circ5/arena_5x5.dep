@@ -1,0 +1,73 @@
+# Deployment specification file
+# For each casu in the arena, we need to specifiy:
+#     - the hostname of the target machine
+#     - the controller and additional files to deploy
+
+fish-tank :
+    cats :
+        hostname : localhost
+        user : assisi
+        prefix : deploy/domset
+        controller : ../controllers/relay.py
+
+bee-arena :
+  casu-020 :
+      hostname : bbg-007
+      user : assisi
+      prefix : deploy
+      controller : ../controllers/domset_to_interface.py
+      extra : []
+  casu-021 :
+      hostname : bbg-005
+      user : assisi
+      prefix : deploy
+      controller : ../controllers/domset_to_interface.py
+      extra : []
+  casu-022 :
+      hostname : bbg-005
+      user : assisi
+      prefix : deploy
+      controller : ../controllers/domset_to_interface.py
+      extra : []
+  casu-023 :
+      hostname : bbg-006
+      user : assisi
+      prefix : deploy
+      controller : ../controllers/domset_to_interface.py
+      extra : []
+  casu-024 :
+      hostname : bbg-008
+      user : assisi
+      prefix : deploy
+      controller : ../controllers/domset_to_interface.py
+      extra : []
+  casu-029 :
+      hostname : bbg-007
+      user : assisi
+      prefix : deploy
+      controller : ../controllers/domset_to_interface.py
+      extra : []
+  casu-030 :
+      hostname : bbg-010
+      user : assisi
+      prefix : deploy
+      controller : ../controllers/domset_to_interface.py
+      extra : []
+  casu-031 :
+      hostname : bbg-018
+      user : assisi
+      prefix : deploy
+      controller : ../controllers/domset_to_interface.py
+      extra : []
+  casu-032 :
+      hostname : bbg-006
+      user : assisi
+      prefix : deploy
+      controller : ../controllers/domset_to_interface.py
+      extra : []
+  casu-033 :
+      hostname : bbg-018
+      user : assisi
+      prefix : deploy
+      controller : ../controllers/domset_to_interface.py
+      extra : []

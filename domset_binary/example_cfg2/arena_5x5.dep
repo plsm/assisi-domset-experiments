@@ -1,0 +1,66 @@
+# Deployment specification file
+# For each casu in the arena, we need to specifiy:
+#     - the hostname of the target machine
+#     - the controller and additional files to deploy
+
+beearena :
+    casu-050 :
+        hostname : bbg-016
+        user : assisi
+        prefix : deploy
+        controller : ../controllers/domset.py
+        extra : []
+    casu-051 :
+        hostname : bbg-012
+        user : assisi
+        prefix : deploy
+        controller : ../controllers/domset.py
+        extra : []
+    casu-054 :
+        hostname : bbg-014
+        user : assisi
+        prefix : deploy
+        controller : ../controllers/domset.py
+        extra : []
+    casu-055 :
+        hostname : bbg-014
+        user : assisi
+        prefix : deploy
+        controller : ../controllers/domset.py
+        extra : []
+    casu-056 :
+        hostname : bbg-015
+        user : assisi
+        prefix : deploy
+        controller : ../controllers/domset.py
+        extra : []
+    casu-057 :
+        hostname : bbg-016
+        user : assisi
+        prefix : deploy
+        controller : ../controllers/domset.py
+        extra : []
+    casu-058 :
+        hostname : bbg-016
+        user : assisi
+        prefix : deploy
+        controller : ../controllers/domset.py
+        extra : []
+    casu-059 :
+        hostname : bbg-017
+        user : assisi
+        prefix : deploy
+        controller : ../controllers/domset.py
+        extra : []
+    casu-060 :
+        hostname : bbg-017
+        user : assisi
+        prefix : deploy
+        controller : ../controllers/domset.py
+        extra : []
+    casu-061 :
+        hostname : bbg-017
+        user : assisi
+        prefix : deploy
+        controller : ../controllers/domset.py
+        extra : []

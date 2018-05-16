@@ -1,0 +1,43 @@
+digraph arena_5x50 {
+subgraph "fish-tank" {
+        "fish-tank/cats" -> "bee-arena/casu-050" [label = "casu-050"]
+        "fish-tank/cats" -> "bee-arena/casu-051" [label = "casu-051"]
+        "fish-tank/cats" -> "bee-arena/casu-054" [label = "casu-054"]
+        "fish-tank/cats" -> "bee-arena/casu-055" [label = "casu-055"]
+        "fish-tank/cats" -> "bee-arena/casu-056" [label = "casu-056"]
+        "fish-tank/cats" -> "bee-arena/casu-057" [label = "casu-057"]
+        "fish-tank/cats" -> "bee-arena/casu-058" [label = "casu-058"]
+        "fish-tank/cats" -> "bee-arena/casu-059" [label = "casu-059"]
+        "fish-tank/cats" -> "bee-arena/casu-060" [label = "casu-060"]
+        "fish-tank/cats" -> "bee-arena/casu-061" [label = "casu-061"]
+}
+
+    subgraph "bee-arena" {
+        "bee-arena/casu-050" -> "fish-tank/cats" [label = "cats"]
+        "bee-arena/casu-051" -> "fish-tank/cats" [label = "cats"]
+        "bee-arena/casu-054" -> "fish-tank/cats" [label = "cats"]
+        "bee-arena/casu-055" -> "fish-tank/cats" [label = "cats"]
+        "bee-arena/casu-056" -> "fish-tank/cats" [label = "cats"]
+        "bee-arena/casu-057" -> "fish-tank/cats" [label = "cats"]
+        "bee-arena/casu-058" -> "fish-tank/cats" [label = "cats"]
+        "bee-arena/casu-059" -> "fish-tank/cats" [label = "cats"]
+        "bee-arena/casu-060" -> "fish-tank/cats" [label = "cats"]
+        "bee-arena/casu-061" -> "fish-tank/cats" [label = "cats"]
+
+        "bee-arena/casu-054" -> "bee-arena/casu-055" [ label = "casu-054-055" ]
+        "bee-arena/casu-055" -> "bee-arena/casu-054" [ label = "casu-055-054" ]
+
+        "bee-arena/casu-059" -> "bee-arena/casu-060" [ label = "casu-059-060" ]
+        "bee-arena/casu-060" -> "bee-arena/casu-059" [ label = "casu-060-059" ]
+
+        "bee-arena/casu-057" -> "bee-arena/casu-061" [ label = "casu-057-061" ]
+        "bee-arena/casu-061" -> "bee-arena/casu-057" [ label = "casu-061-057" ]
+
+        "bee-arena/casu-050" -> "bee-arena/casu-056" [ label = "casu-050-056" ]
+        "bee-arena/casu-050" -> "bee-arena/casu-051" [ label = "casu-050-051" ]
+        "bee-arena/casu-051" -> "bee-arena/casu-050" [ label = "casu-051-050" ]
+        "bee-arena/casu-051" -> "bee-arena/casu-056" [ label = "casu-051-056" ]
+        "bee-arena/casu-056" -> "bee-arena/casu-050" [ label = "casu-056-050" ]
+        "bee-arena/casu-056" -> "bee-arena/casu-051" [ label = "casu-056-051" ]
+    }
+}

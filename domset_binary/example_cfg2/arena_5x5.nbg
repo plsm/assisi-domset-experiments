@@ -1,0 +1,19 @@
+digraph arena_5x50 {
+    subgraph "beearena" {
+        "casu-054" -> "casu-055" [ label = "casu-054-055" ]
+        "casu-055" -> "casu-054" [ label = "casu-055-054" ]
+
+        "casu-059" -> "casu-060" [ label = "casu-059-060" ]
+        "casu-060" -> "casu-059" [ label = "casu-060-059" ]
+
+        "casu-057" -> "casu-061" [ label = "casu-057-061" ]
+        "casu-061" -> "casu-057" [ label = "casu-061-057" ]
+
+        "casu-050" -> "casu-056" [ label = "casu-050-056" ]
+        "casu-050" -> "casu-051" [ label = "casu-050-051" ]
+        "casu-051" -> "casu-050" [ label = "casu-051-050" ]
+        "casu-051" -> "casu-056" [ label = "casu-051-056" ]
+        "casu-056" -> "casu-050" [ label = "casu-056-050" ]
+        "casu-056" -> "casu-051" [ label = "casu-056-051" ]
+    }
+}
