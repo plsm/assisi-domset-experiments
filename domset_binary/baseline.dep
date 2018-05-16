@@ -4,31 +4,31 @@
 #     - the controller and additional files to deploy
 
 beearena :
-    casu-006 :
-        hostname : bbg-001
+    casu-013 :
+        hostname : bbg-005
         user : assisi
         prefix : deploy
         controller: controllers/domset.py
         # The brackets around additional files are necessary,
         # because the deployment tool expects a list!
         extra : []
-    casu-007 :
-        hostname : bbg-001
+    casu-014 :
+        hostname : bbg-005
         user : assisi
         prefix : deploy
         controller: controllers/domset.py
         # The brackets around additional files are necessary,
         # because the deployment tool expects a list!
         extra : []
-    casu-008 :
-        hostname : bbg-002
+    casu-015 :
+        hostname : bbg-006
         user : assisi
         prefix : deploy
         controller: controllers/domset.py
         # The brackets around additional files are necessary,
         # because the deployment tool expects a list!
         extra : []
-    casu-009 :
+    casu-016 :
         hostname : bbg-004
         user : assisi
         prefix : deploy

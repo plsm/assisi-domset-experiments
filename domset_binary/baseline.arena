@@ -9,26 +9,26 @@ beearena :
     # Casu names have to start with casu- in order for
     # automatic spawning to work; they are also only
     # allowed to contain letters, dashes and underscores
-    casu-006 :
+    casu-013 :
         pose : {x : -13.5, y : 18, yaw : 0}
-        sub_addr : tcp://bbg-001:3555
-        pub_addr : tcp://bbg-001:3556
-        msg_addr : tcp://bbg-001:50103
+        sub_addr : tcp://bbg-005:1555
+        pub_addr : tcp://bbg-005:1556
+        msg_addr : tcp://bbg-005:50501
 
-    casu-007 :
+    casu-014 :
         pose : {x : -4.5, y : 18, yaw : 0}
-        sub_addr : tcp://bbg-001:4555
-        pub_addr : tcp://bbg-001:4556
-        msg_addr : tcp://bbg-001:50304
+        sub_addr : tcp://bbg-005:2555
+        pub_addr : tcp://bbg-005:2556
+        msg_addr : tcp://bbg-005:50502
 
-    casu-008 :
+    casu-015 :
         pose : {x : 4.5, y : 18, yaw : 0}
-        sub_addr : tcp://bbg-002:2555
-        pub_addr : tcp://bbg-002:2556
-        msg_addr : tcp://bbg-002:50302
+        sub_addr : tcp://bbg-006:1555
+        pub_addr : tcp://bbg-006:1556
+        msg_addr : tcp://bbg-006:50601
 
-    casu-009 :
+    casu-016 :
         pose : {x : 13.5, y : 18, yaw : 0}
-        sub_addr : tcp://bbg-004:1555
-        pub_addr : tcp://bbg-004:1556
-        msg_addr : tcp://bbg-004:50301
+        sub_addr : tcp://bbg-004:3555
+        pub_addr : tcp://bbg-004:3556
+        msg_addr : tcp://bbg-004:50403
