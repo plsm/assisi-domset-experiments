@@ -51,7 +51,7 @@ class DomsetController(Thread):
         Ttemp = 5.0 # discretisation period
         self._temp_control_freq = 1.0 / Ttemp # Sample frequency for temperature control in seconds is once in 5 seconds
         self.time_start = time.time()
-        self._time_length = 1500.0
+        self._time_length = 1500.0 #1500.0
         self._time_length_cool = self._time_length * 0.5
         self._time_length_heat = self._time_length * 0.3333
         self.t_prev = time.time()
@@ -60,7 +60,7 @@ class DomsetController(Thread):
 
         # sensor activity variables - denote bee presence
         self.activeSensors = [0]
-        self._sensors_buf_len = 10 * Ttemp # last 2 sec?
+        self._sensors_buf_len = 10 * Ttemp # last 2 sec? should be Ttemp/Td
         self.ir_thresholds = [25000, 25000, 25000, 25000, 25000, 25000]
         self.integrate_activity = 0.0
         self.average_activity = 0.0
@@ -143,14 +143,13 @@ class DomsetController(Thread):
                     msg = self.casu.read_message()
                     if msg:
                         nbg_id = int(msg['sender'][-3:])
-                        #print('received message from: ' + str(nbg_id) + ' saying: ' + str(msg['data']))
                         self.nbg_data_buffer[nbg_id].append(msg['data'])
                         #print(self.nbg_data_buffer[nbg_id])
                         # Check if we now have at least one message from each neighbor
                         updated_all = True
                         for nbg in self.nbg_data_buffer:
                             if not self.nbg_data_buffer[nbg]:
-                                #print('+++ missing ir readings +++ ' + str(nbg))
+                                #print(str(casu_id) + ' +++ missing ir readings +++ ' + str(nbg))
                                 updated_all = False
                         #else:
                             #self.nbg_data_buffer[nbg_id].pop(0)
@@ -159,7 +158,8 @@ class DomsetController(Thread):
             self.calculate_temp_ref()
             if (self.group_size > 1):
                 for nbg in self.casu._Casu__neighbors:
-                    self.casu.send_message(nbg,json.dumps(self.temp_ref))
+                    success = self.casu.send_message(nbg,json.dumps(self.temp_ref))
+
         else:
             # send self ir readings to group master
             master_id = casu_id
@@ -170,7 +170,6 @@ class DomsetController(Thread):
                     master = nbg
                     master_id = nbg_id
             self.casu.send_message(master,json.dumps(self.average_activity))
-
             # wait for new temp reference from group master
             updated_temp_ref = False
             while not updated_temp_ref:
@@ -308,7 +307,7 @@ class DomsetController(Thread):
         else:
             heat = 0.0
 
-        if int(self.casu_id) == 13:
+        if int(self.casu_id) == -1:
             print(" maximum_activity " + str(self.maximum_activity)+ " scaling_cool " + str(scaling_cool))
             print("minimum activity " + str(self.minimum_activity))
             print("cool_float " + str(self.cool_float) + " cool " + str(cool))
@@ -329,8 +328,8 @@ class DomsetController(Thread):
             self.temp_ref = 36
         if self.temp_ref < 26:
             self.temp_ref = 26
-        if not (self.temp_ref_old == self.temp_ref):
-            print('new temperature reference ')
+        #if not (self.temp_ref_old == self.temp_ref):
+            #print('new temperature reference ')
 
 
 if __name__ == '__main__':
