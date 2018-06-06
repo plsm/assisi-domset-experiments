@@ -5,6 +5,7 @@ from __future__ import print_function
 
 import os
 import stat
+import time
 import yaml
 import zmq
 
@@ -108,11 +109,11 @@ def deploy_and_run_workers (list_worker_settings, controller, extra, workers_gra
         # Not sure if this is needed
         util.MANAGER_LAYER : {
             'cats' : {
-            #    'sub_addr' : 'tcp://control-workstation:5555' ,
-            #    'pub_addr' : 'tcp://control-workstation:5556' ,
-                'sub_addr' : 'tcp://control-workstation:35555' ,
-                'pub_addr' : 'tcp://control-workstation:35556' ,
-                'msg_addr' : 'tcp://control-workstation:10105'
+                'sub_addr' : 'tcp://control-workstation:5555' ,
+                'pub_addr' : 'tcp://control-workstation:5556' ,
+            #    'sub_addr' : 'tcp://control-workstation:35555' ,
+            #    'pub_addr' : 'tcp://control-workstation:35556' ,
+                'msg_addr' : 'tcp://control-workstation:49876'
                 }
             }
         }, fp_arena, default_flow_style = False)
@@ -128,7 +129,7 @@ def deploy_and_run_workers (list_worker_settings, controller, extra, workers_gra
                 'hostname': 'localhost' ,
                 'user': 'assisi' ,
                 'prefix': 'pedro/domset' ,
-                'controller' : os.path.join (os.path.dirname (os.path.dirname (os.path.abspath (__file__))), 'controllers/relay.py')
+                'controller' : os.path.join (os.path.dirname (os.path.dirname (os.path.abspath (__file__))), 'controllers/dummy.py')
                 }
             }
         }, fp_dep, default_flow_style = False)
@@ -147,16 +148,23 @@ def deploy_and_run_workers (list_worker_settings, controller, extra, workers_gra
 def collect_data_from_workers (list_worker_settings, destination):
     dc = assisipy.collect_data.DataCollector (ASSISI_FILE_NAME, logpath = destination)
     dc.collect ()
+    time.sleep (1)
     for ws in list_worker_settings:
         try:
             os.makedirs (os.path.join (destination, ws.key ()))
         except:
             pass
-        source = os.path.join (destination, os.path.join ('data_workers', os.path.join (util.BEE_LAYER, ws.key ())))
-        for filename in os.listdir (source):
-            new = os.path.join (os.path.join (destination, ws.key ()), filename)
-            os.rename (os.path.join (source, filename), new)
-            os.chmod (new, stat.S_IREAD)
-        os.rmdir (source)
+        try:
+            source = os.path.join (destination, os.path.join ('data_workers', os.path.join (util.BEE_LAYER, ws.key ())))
+            for filename in os.listdir (source):
+                new = os.path.join (os.path.join (destination, ws.key ()), filename)
+                os.rename (os.path.join (source, filename), new)
+                os.chmod (new, stat.S_IREAD)
+            os.rmdir (source)
+        except:
+            print ('[W] problems moving files for CASU {}'.format (ws.key ()))
     os.rmdir (os.path.join (destination, os.path.join ('data_workers', util.BEE_LAYER)))
-    os.rmdir (os.path.join (destination, 'data_workers'))
+    try:
+        os.rmdir (os.path.join (destination, 'data_workers'))
+    except Exception as e:
+        print (e)
