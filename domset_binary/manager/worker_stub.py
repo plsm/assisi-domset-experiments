@@ -10,12 +10,23 @@ class WorkerStub:
     def key (self):
         return 'casu-%03d' % (self.casu_number)
 
-    def start_domset (self):
+    def initialize (self):
+        print ("Sending initialize DOMSET command to worker responsible for casu #%d..." % (self.casu_number))
+        answer = zmq_sock_utils.send_recv (self.socket, [worker.INITIALIZE])
+        print ("Worker responded with: %s" % (str (answer)))
+
+    def start_domset_send (self):
         """
         Initialize the DOMSET controller.
         """
         print ("Sending start DOMSET command to worker responsible for casu #%d..." % (self.casu_number))
-        answer = zmq_sock_utils.send_recv (self.socket, [worker.START])
+        zmq_sock_utils.send (self.socket, [worker.START])
+
+    def start_domset_recv (self):
+        """
+        Initialize the DOMSET controller.
+        """
+        answer = zmq_sock_utils.recv (self.socket)
         print ("Worker responded with: %s" % (str (answer)))
 
     def terminate_session (self):
@@ -37,4 +48,3 @@ def connect_workers (list_worker_settings):
         ws.casu_number : WorkerStub (ws.casu_number, ws.connect_to_worker ())
         for ws in list_worker_settings
     }
-
