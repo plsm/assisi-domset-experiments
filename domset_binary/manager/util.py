@@ -16,15 +16,16 @@ XTERM = find_app ('xterm')
 CAMERA_RESOLUTION_X = 2048
 CAMERA_RESOLUTION_Y = 2048
 
-def record_video_gstreamer (video_filename, number_frames, frames_per_second, crop_left, crop_right, crop_top, crop_bottom, debug = False):
+def record_video_gstreamer (video_filename, number_frames, frames_per_second, crop_left, crop_right, crop_top, crop_bottom, debug = True):
     command =  [
         GST_LAUNCH,
         '--gst-plugin-path=/usr/local/lib/gstreamer-0.10/',
         '--gst-plugin-load=libgstaravis-0.4.so',
-        #'--verbose',                                                                                                                                                                                                                          
-        '--quiet',
+        #'--verbose',
+        #'--quiet',
         'aravissrc', 'num-buffers=%d' % (number_frames), '!',
-        'video/x-raw-yuv,width=2048,height=2048,framerate=%d/1' % (frames_per_second), '!',
+        #'video/x-raw-yuv,width=2048,height=2048,framerate=%d/1' % (frames_per_second), '!',
+        'video/x-raw-yuv,', 'width=2048,', 'height=2048,', 'framerate=%d/1' % (frames_per_second), '!',
         'videocrop', 'left=%d' % (crop_left), 'right=%d' % (crop_right), 'top=%d' % (crop_top), 'bottom=%d' % (crop_bottom), '!',
         'jpegenc', '!',
         'avimux', 'name=mux', '!',
