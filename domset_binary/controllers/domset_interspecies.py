@@ -9,6 +9,9 @@ from threading import Thread, Event
 from datetime import datetime
 from copy import deepcopy
 import json
+from json import encoder
+
+
 import csv
 from math import exp
 
@@ -19,13 +22,14 @@ class DomsetController(Thread):
         Thread.__init__(self)
         self.stop = False
 
+        self.turn_off_LED = False
         self.casu = casu.Casu(rtc_file,log=True)
         # Parse rtc file name to get CASU id
         # assumes casu-xxx.rtc file name format
         self.casu_id = int(rtc_file[-7:-4])
         nbg_ids = []
         for name in self.casu._Casu__neighbors:
-            if not ('cats' in name):
+            if ('casu' in name):
                 nbg_ids.append(int(name[-3:]))
         #nbg_ids = [int(name[-3:]) for name in self.casu._Casu__neighbors]
         self.nbg_data_buffer = {}
@@ -46,7 +50,7 @@ class DomsetController(Thread):
             master_id = self.casu_id
             master = self.casu
             for nbg in self.casu._Casu__neighbors:
-                if "cats" in nbg:
+                if not ("casu" in nbg):
                     pass
                 else:
                     nbg_id = int(nbg[-3:])
@@ -169,7 +173,8 @@ class DomsetController(Thread):
                 while not updated_all:
                     msg = self.casu.read_message()
                     if msg:
-                        if 'iface' in msg['sender']:
+                        print (msg)
+                        if not ('casu' in msg['sender']):
                             self.fish_info.append(msg['data'])
                             #print("CASU " + str(self.casu_id) + " got DATA: " + msg['data'])
                         else:
@@ -190,7 +195,7 @@ class DomsetController(Thread):
             #self.calculate_blow_ref()
             if (self.group_size > 1):
                 for nbg in self.casu._Casu__neighbors:
-                    if not ("cats" in nbg):
+                    if ("casu" in nbg):
                         success = self.casu.send_message(nbg,json.dumps({'t_ref':self.temp_ref, 'blow':self.blow}))
 
         else:
@@ -244,7 +249,9 @@ class DomsetController(Thread):
             duration = float(decompose[0])
             self.blow = duration
             # here i should set the self.blow to received blow duration
-            #print("CASU-" + str(self.casu_id) + ": " + msg)
+            print("CASU-" + str(self.casu_id) + ": " + msg)
+            self.casu.set_diagnostic_led_rgb (r = 1, b = 0, g = 1)
+            self.turn_off_LED = True
         else:
             pass
 
@@ -284,6 +291,8 @@ class DomsetController(Thread):
             if (self.i >= 1 / (self._Td * float(self._temp_control_freq))):
                 #print(str(self.casu_id) + ' ' + str(self.t_prev - self.time_start))
                 self.update()
+                if (self.turn_off_LED):
+                    self.casu.set_diagnostic_led_rgb (0,0,0)
                 self.airflow_control()
                 self.respond_to_fish()
                 self.communicate()
