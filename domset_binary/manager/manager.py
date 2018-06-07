@@ -25,28 +25,10 @@ def main ():
     lwsg = worker_settings.load_worker_settings (args.workers)
     g = graph.Graph (cfg)
 
-    if args.deploy:
-        worker_settings.deploy_and_run_workers (
-            lwsg,
-            os.path.join (os.path.dirname (os.path.abspath (__file__)), 'worker.py'),
-            [
-                os.path.join (os.path.dirname (os.path.dirname (os.path.abspath (__file__))), 'controllers/domset_interspecies.py'),
-                os.path.join (os.path.dirname (os.path.abspath (__file__)), 'zmq_sock_utils.py'),
-            ],
-            g)
-    else:
-        dws = worker_stub.connect_workers (lwsg)
-        experiment_folder = calculate_experiment_folder_for_new_run ()
-        process_deploy = run_command_deploy (args.config, args.workers)
-        print ('Sending initialize message to all workers')
-        for ws in dws.values ():
-            ws.initialize ()
-        print ('Press ENTER to start DOMSET and start video recording')
-        raw_input ('> ')
-        send_start_command_to_workers (dws)
-        number_frames = cfg ['video']['frames_per_second'] * cfg ['experiment_duration'] * 60
+    if args.check_video:
+        number_frames = cfg ['video']['frames_per_second'] * 10
         process_recording = util.record_video_gstreamer (
-            os.path.join (experiment_folder, 'video.avi'),
+            'check-video-cropping.avi',
             number_frames,
             cfg ['video']['frames_per_second'],
             cfg ['video']['crop_left'],
@@ -57,9 +39,44 @@ def main ():
             process_recording.wait ()
         except KeyboardInterrupt:
             print ('Terminate processes')
-        send_terminate_command_to_workers (dws)
-        process_deploy.wait ()
-        worker_settings.collect_data_from_workers (lwsg, experiment_folder)
+        print ('Done checking video cropping')
+    else:
+        if args.deploy:
+            worker_settings.deploy_and_run_workers (
+                lwsg,
+                os.path.join (os.path.dirname (os.path.abspath (__file__)), 'worker.py'),
+                [
+                    os.path.join (os.path.dirname (os.path.dirname (os.path.abspath (__file__))), 'controllers/domset_interspecies.py'),
+                    os.path.join (os.path.dirname (os.path.abspath (__file__)), 'zmq_sock_utils.py'),
+                ],
+                g)
+        else:
+            dws = worker_stub.connect_workers (lwsg)
+            experiment_folder = calculate_experiment_folder_for_new_run ()
+            process_deploy = run_command_deploy (args.config, args.workers)
+            print ('Sending initialize message to all workers')
+            for ws in dws.values ():
+                ws.initialize ()
+            print ('Press ENTER to start DOMSET and start video recording')
+            raw_input ('> ')
+            send_start_command_to_workers (dws)
+            print ('[I] recording a {} minutes video'.format (cfg ['experiment_duration']))
+            number_frames = cfg ['video']['frames_per_second'] * cfg ['experiment_duration'] * 60
+            process_recording = util.record_video_gstreamer (
+                os.path.join (experiment_folder, 'video.avi'),
+                number_frames,
+                cfg ['video']['frames_per_second'],
+                cfg ['video']['crop_left'],
+                cfg ['video']['crop_right'],
+                cfg ['video']['crop_top'],
+                cfg ['video']['crop_bottom'])
+            try:
+                process_recording.wait ()
+            except KeyboardInterrupt:
+                print ('Terminate processes')
+            send_terminate_command_to_workers (dws)
+            process_deploy.wait ()
+            worker_settings.collect_data_from_workers (lwsg, experiment_folder)
 
 def process_arguments ():
     parser = argparse.ArgumentParser (
@@ -82,6 +99,10 @@ def process_arguments ():
         '--deploy',
         action = 'store_true',
         help = 'deploy controllers to the beaglebones. Should be only used while debugging')
+    parser.add_argument (
+        '--check-video',
+        action = 'store_true',
+        help = 'check video cropping parameters')
     return parser.parse_args ()
 
 def calculate_experiment_folder_for_new_run ():
