@@ -22,12 +22,10 @@ class Node:
     def __init__ (self, number, node_CASUs, CASUs):
         self.id = number
         self.CASUs = {c : CASUs [c] for c in node_CASUs}
-        print (self.CASUs)
 
 class Edge:
     def __init__ (self, nodes, dict_nodes):
         self.nodes = (dict_nodes [nodes [0]], dict_nodes [nodes [1]])
-        print (self.nodes)
 
 class Graph:
     def __init__ (self, parameter):
@@ -41,9 +39,6 @@ class Graph:
         self.CASUs = {c : CASU (c) for n in yaml_graph ['node_CASUs'] for c in yaml_graph ['node_CASUs'][n]}
         self.nodes = {n : Node (n, yaml_graph ['node_CASUs'][n], self.CASUs) for n in yaml_graph ['node_CASUs']}
         self.edges = [Edge (ns, self.nodes) for ns in yaml_graph ['edges']]
-        print (self.CASUs)
-        print (self.nodes)
-        print (self.edges)
 
     def create_neighbourhood_dot (self):
         result = pygraphviz.AGraph (directed = True)
