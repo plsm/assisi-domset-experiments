@@ -26,57 +26,65 @@ def main ():
     g = graph.Graph (cfg)
 
     if args.check_video:
-        number_frames = cfg ['video']['frames_per_second'] * 10
-        process_recording = util.record_video_gstreamer (
-            'check-video-cropping.avi',
-            number_frames,
-            cfg ['video']['frames_per_second'],
-            cfg ['video']['crop_left'],
-            cfg ['video']['crop_right'],
-            cfg ['video']['crop_top'],
-            cfg ['video']['crop_bottom'])
-        try:
-            process_recording.wait ()
-        except KeyboardInterrupt:
-            print ('Terminate processes')
-        print ('Done checking video cropping')
+        check_video (cfg)
+    elif args.deploy:
+        deploy (lwsg, g)
     else:
-        if args.deploy:
-            worker_settings.deploy_and_run_workers (
-                lwsg,
-                os.path.join (os.path.dirname (os.path.abspath (__file__)), 'worker.py'),
-                [
-                    os.path.join (os.path.dirname (os.path.dirname (os.path.abspath (__file__))), 'controllers/domset_interspecies.py'),
-                    os.path.join (os.path.dirname (os.path.abspath (__file__)), 'zmq_sock_utils.py'),
-                ],
-                g)
-        else:
-            dws = worker_stub.connect_workers (lwsg)
-            experiment_folder = calculate_experiment_folder_for_new_run ()
-            process_deploy = run_command_deploy (args.config, args.workers)
-            print ('Sending initialize message to all workers')
-            for ws in dws.values ():
-                ws.initialize ()
-            print ('Press ENTER to start DOMSET and start video recording')
-            raw_input ('> ')
-            send_start_command_to_workers (dws)
-            print ('[I] recording a {} minutes video'.format (cfg ['experiment_duration']))
-            number_frames = cfg ['video']['frames_per_second'] * cfg ['experiment_duration'] * 60
-            process_recording = util.record_video_gstreamer (
-                os.path.join (experiment_folder, 'video.avi'),
-                number_frames,
-                cfg ['video']['frames_per_second'],
-                cfg ['video']['crop_left'],
-                cfg ['video']['crop_right'],
-                cfg ['video']['crop_top'],
-                cfg ['video']['crop_bottom'])
-            try:
-                process_recording.wait ()
-            except KeyboardInterrupt:
-                print ('Terminate processes')
-            send_terminate_command_to_workers (dws)
-            process_deploy.wait ()
-            worker_settings.collect_data_from_workers (lwsg, experiment_folder)
+        main_operations (cfg, lwsg)
+
+def check_video (cfg):
+    number_frames = cfg ['video']['frames_per_second'] * 10
+    process_recording = util.record_video_gstreamer (
+        'check-video-cropping.avi',
+        number_frames,
+        cfg ['video']['frames_per_second'],
+        cfg ['video']['crop_left'],
+        cfg ['video']['crop_right'],
+        cfg ['video']['crop_top'],
+        cfg ['video']['crop_bottom'])
+    try:
+        process_recording.wait ()
+    except KeyboardInterrupt:
+        print ('Terminate processes')
+    print ('Done checking video cropping')
+
+def deploy (lwsg, g):
+    worker_settings.deploy_and_run_workers (
+        lwsg,
+        os.path.join (os.path.dirname (os.path.abspath (__file__)), 'worker.py'),
+        [
+            os.path.join (os.path.dirname (os.path.dirname (os.path.abspath (__file__))), 'controllers/domset_interspecies.py'),
+            os.path.join (os.path.dirname (os.path.abspath (__file__)), 'zmq_sock_utils.py'),
+        ],
+        g)
+
+def main_operations (cfg, lws):
+    dws = worker_stub.connect_workers (lwsg)
+    experiment_folder = calculate_experiment_folder_for_new_run ()
+    process_deploy = run_command_deploy (args.config, args.workers)
+    print ('Sending initialize message to all workers')
+    for ws in dws.values ():
+        ws.initialize ()
+    print ('Press ENTER to start DOMSET and start video recording')
+    raw_input ('> ')
+    send_start_command_to_workers (dws)
+    print ('[I] recording a {} minutes video'.format (cfg ['experiment_duration']))
+    number_frames = cfg ['video']['frames_per_second'] * cfg ['experiment_duration'] * 60
+    process_recording = util.record_video_gstreamer (
+        os.path.join (experiment_folder, 'video.avi'),
+        number_frames,
+        cfg ['video']['frames_per_second'],
+        cfg ['video']['crop_left'],
+        cfg ['video']['crop_right'],
+        cfg ['video']['crop_top'],
+        cfg ['video']['crop_bottom'])
+    try:
+        process_recording.wait ()
+    except KeyboardInterrupt:
+        print ('Terminate processes')
+    send_terminate_command_to_workers (dws)
+    process_deploy.wait ()
+    worker_settings.collect_data_from_workers (lwsg, experiment_folder)
 
 def process_arguments ():
     parser = argparse.ArgumentParser (
