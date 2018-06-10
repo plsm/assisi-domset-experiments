@@ -17,8 +17,8 @@ The acronyms are:
 * NAC Node average activity.  This is computed every update cycle after the
   master CASU received and processed one message from its neighbours.
 
-* CAS CASU active sensors.  This is computed in every iteration of the loop
-  in the run method.  Values from the third to the eight contain the active
+* CAS CASU active sensors.  This is computed in every iteration of the run
+  method while loop.  Values from the third to the eight contain the active
   sensors.
 
 * NT Node temperature reference.  This is the value computed by the master
