@@ -30,7 +30,7 @@ def main ():
     elif args.deploy:
         deploy (lwsg, g)
     else:
-        main_operations (cfg, lwsg)
+        main_operations (args, cfg, lwsg)
 
 def check_video (cfg):
     number_frames = cfg ['video']['frames_per_second'] * 10
@@ -58,7 +58,7 @@ def deploy (lwsg, g):
         ],
         g)
 
-def main_operations (cfg, lws):
+def main_operations (args, cfg, lwsg):
     dws = worker_stub.connect_workers (lwsg)
     experiment_folder = calculate_experiment_folder_for_new_run ()
     process_deploy = run_command_deploy (args.config, args.workers)
