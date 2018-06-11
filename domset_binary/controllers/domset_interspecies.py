@@ -29,7 +29,7 @@ class DomsetController(Thread):
         self.casu_id = int(rtc_file[-7:-4])
         nbg_ids = []
         for name in self.casu._Casu__neighbors:
-            if ('casu' in name):
+            if 'casu' in name:
                 nbg_ids.append(int(name[-3:]))
         #nbg_ids = [int(name[-3:]) for name in self.casu._Casu__neighbors]
         self.nbg_data_buffer = {}
@@ -126,7 +126,6 @@ class DomsetController(Thread):
         self.casu.set_diagnostic_led_rgb(r=1)
 
         t_start = time.time()
-        count = 0
         ir_raw_buffers = [[0],[0],[0],[0],[0],[0]]
         while time.time() - t_start < duration:
             ir_raw = self.casu.get_ir_raw_value(casu.ARRAY)
@@ -157,17 +156,15 @@ class DomsetController(Thread):
 
         t_old = self.t_prev
         self.t_prev = time.time()
-        casu_id = self.casu_id
-
         # calculate local ir sensor activity over time
         self.calculate_self_average_activity()
-        if (self.group_size == 1):
+        if self.group_size == 1:
             msg = self.casu.read_message()
             if msg:
                 if 'iface' in msg['sender']:
                     self.fish_info.append(msg['data'])
         if self._is_master:
-            if (self.group_size > 1):
+            if self.group_size > 1:
                 # receive group ir readings
                 updated_all = False
                 while not updated_all:
@@ -193,9 +190,9 @@ class DomsetController(Thread):
             self.calculate_sensor_activity()
             self.calculate_temp_ref()
             #self.calculate_blow_ref()
-            if (self.group_size > 1):
+            if self.group_size > 1:
                 for nbg in self.casu._Casu__neighbors:
-                    if ("casu" in nbg):
+                    if "casu" in nbg:
                         success = self.casu.send_message(nbg,json.dumps({'t_ref':self.temp_ref, 'blow':self.blow}))
 
         else:
@@ -231,7 +228,7 @@ class DomsetController(Thread):
 
         # Set temperature reference
         if not (self.temp_ref_old == self.temp_ref):
-            self.logger.writerow (["CT", time.time (), temp_ref])
+            self.logger.writerow (["CT", time.time (), self.temp_ref])
             self.casu.set_temp(self.temp_ref)
 
     def communicate(self):
@@ -258,11 +255,11 @@ class DomsetController(Thread):
 
     def airflow_control(self):
         if self.blow > 0.0:
-            if (self.blow_prev == 0.0):
+            if self.blow_prev == 0.0:
                 self.start_blow = time.time()
                 self.logger.writerow (["CAF", time.time (), 1])
                 self.casu.set_airflow_intensity(1)
-                if (self.casu_id == 20):
+                if self.casu_id == 20:
                     print("Actually starts blowing")
             else:
                 time_now = time.time()
@@ -271,7 +268,7 @@ class DomsetController(Thread):
                     self.casu.airflow_standby()
                     self.blow = 0.0
                     self.integrate_minimum_activity = 0
-                    if (self.casu_id == 20):
+                    if self.casu_id == 20:
                         print("Stop blowing, timeout!")
         else:
             if not (self.blow_prev == 0.0):
@@ -292,10 +289,10 @@ class DomsetController(Thread):
                 self.time_index += 1
             self.update_activeSensors_estimate()
             self.i += 1
-            if (self.i >= 1 / (self._Td * float(self._temp_control_freq))):
+            if self.i >= 1 / (self._Td * float(self._temp_control_freq)):
                 #print(str(self.casu_id) + ' ' + str(self.t_prev - self.time_start))
                 self.update()
-                if (self.turn_off_LED):
+                if self.turn_off_LED:
                     self.casu.set_diagnostic_led_rgb (0,0,0)
                 self.airflow_control()
                 self.respond_to_fish()
@@ -401,7 +398,7 @@ class DomsetController(Thread):
         #if ((self.maximum_activity < scaling_cool) or (self.minimum_activity == 0.0)) and (self.temp_ctrl > 0):
         if (self.maximum_activity < scaling_cool) and (self.temp_ctrl > 0):
             self.cool_float += self._rho * 1.0
-        if (self.cool_float > 0.5):
+        if self.cool_float > 0.5:
             cool = 1.0
         else:
             cool = 0.0
@@ -422,11 +419,11 @@ class DomsetController(Thread):
             print("temp_ctrl " + str(self.temp_ctrl))
 
         d_t_ref = 0.0
-        if (heat == 1.0):
+        if heat == 1.0:
             d_t_ref = self._step_heat * self.group_size
-        if (cool == 1.0):
+        if cool == 1.0:
             d_t_ref = - self._step_cool
-        if (d_t_ref > 0.5):
+        if d_t_ref > 0.5:
             d_t_ref = 0.5
 
         self.temp_ref_old = self.temp_ref
@@ -442,17 +439,17 @@ class DomsetController(Thread):
     def calculate_blow_ref(self):
         time_now = time.time()
         if (time_now - self.time_start > self._blow_allowed_start) and (time_now - self.time_start < self._blow_allowed_stop):
-            if (self.blow == 0.0):
-                if (self.integrate_minimum_activity < self._integrate_min_windup):
-                    if (self.minimum_activity < self._scaling_blow):
+            if self.blow == 0.0:
+                if self.integrate_minimum_activity < self._integrate_min_windup:
+                    if self.minimum_activity < self._scaling_blow:
                         self.integrate_minimum_activity += 1
-                        if (self.casu_id == 20):
+                        if self.casu_id == 20:
                             print("Integrating activity " + str(self.integrate_minimum_activity))
                     else:
                         self.integrate_minimum_activity = 0
-                if (self.integrate_minimum_activity >= self._blow_start_condition):
+                if self.integrate_minimum_activity >= self._blow_start_condition:
                     self.blow = self._default_blow_duration
-                    if (self.casu_id == 20):
+                    if self.casu_id == 20:
                         print("Integration over, setpoint blowing " + str(self.integrate_minimum_activity))
 
 
