@@ -4,6 +4,7 @@
 import argparse
 import os
 import os.path
+import re
 import subprocess
 import yaml
 
@@ -60,7 +61,9 @@ def deploy (lwsg, g):
 
 def main_operations (args, cfg, lwsg):
     dws = worker_stub.connect_workers (lwsg)
-    experiment_folder = calculate_experiment_folder_for_new_run ()
+    if args.run_folder is not None:
+        check_experiment_folder (args.run_folder)
+    experiment_folder = calculate_experiment_folder_for_new_run () if args.run_folder is None else args.run_folder
     process_deploy = run_command_deploy (args.config, args.workers)
     print ('Sending initialize message to all workers')
     for ws in dws.values ():
@@ -111,6 +114,12 @@ def process_arguments ():
         '--check-video',
         action = 'store_true',
         help = 'check video cropping parameters')
+    parser.add_argument (
+        '--run-folder',
+        metavar = 'PATH',
+        type = str,
+        help = 'folder where data files are stored.  If not provided a non existant folder named run-xxx will be used.'
+    )
     return parser.parse_args ()
 
 def calculate_experiment_folder_for_new_run ():
@@ -125,6 +134,14 @@ def calculate_experiment_folder_for_new_run ():
             os.makedirs (result)
             return result
         run_number += 1
+
+def check_experiment_folder (folder):
+    casu_folders = re.compile ('casu-[0-9][0-9][0-9]')
+    for filename in os.listdir (folder):
+        if filename == 'ISIlog':
+            print ('[W] Files in the ISIlog can be over written!')
+        elif casu_folders.match (filename):
+            print ('[W] Files in casu log folder {} can be over written!'.format (filename))
 
 def run_command_deploy (config, workers):
     """
