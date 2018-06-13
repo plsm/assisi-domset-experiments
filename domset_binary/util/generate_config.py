@@ -6,6 +6,7 @@
 
 import argparse
 import copy
+import functools
 import pygraphviz
 import yaml
 
@@ -100,6 +101,26 @@ class AbstractGenerator:
             result.extend ([int (c [-3:]) for c in v])
         return result
 
+    def cmp_casu_keys (self, key1, key2):
+        '''
+        Compare two CASUs based on their physical location in the bee
+        arena.  This takes into account stadium arena placement: either
+        to the right (increasing x coordinate) or to the bottom
+        (decreasing y coordinate) of a selected CASU.  When searching
+        for CASUs to place stadium arenas, we go from CASUs in the top
+        left corner of the bee arena.
+        '''
+        x1 = self.arena [BEE_ARENA][key1]['pose']['x']
+        y1 = self.arena [BEE_ARENA][key1]['pose']['y']
+        x2 = self.arena [BEE_ARENA][key2]['pose']['x']
+        y2 = self.arena [BEE_ARENA][key2]['pose']['y']
+        if x1 == x2 and y1 == y2:
+            return 0
+        elif y1 > y2 or (y1 == y2 and x1 < x2):
+            return -1
+        else:
+            return 1
+
 # Exhaustive
 class ExhaustiveSearch (AbstractGenerator):
     def __init__ (self, _graph_filename, _arena_filename):
@@ -122,7 +143,8 @@ class ExhaustiveSearch (AbstractGenerator):
         new_list_edges = list_edges [1:]
         this_edge = list_edges [0]
         list_keys = available_arena_locations.keys ()
-        list_keys.sort ()
+        list_keys.sort (cmp = self.cmp_casu_keys)
+        print ('Sorted CASUS {}'.format (list_keys))
         for casu1_key in list_keys:
             casus_data = available_arena_locations [casu1_key]
         #for casu1_key, casus_data in available_arena_locations.iteritems ():
