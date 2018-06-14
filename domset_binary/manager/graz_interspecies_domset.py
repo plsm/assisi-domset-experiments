@@ -2,6 +2,7 @@ from __future__ import print_function
 
 import argparse
 import os.path
+import shutil
 import subprocess
 import yaml
 
@@ -15,6 +16,7 @@ def main ():
     p2 = run_ISI (args.ISI_config, args.ISI_path, run_folder)
     p1.wait ()
     p2.wait ()
+    copy_configuration_files (args.CASU_config, args.CASU_workers, args.ISI_config, args.ISI_path, run_folder)
 
 def calculate_experiment_folder_for_new_run ():
     """
@@ -79,6 +81,28 @@ def run_ISI (config, path, run_folder, debug = False):
         print (' '.join (command))
         print ()
     return subprocess.Popen (command)
+
+def copy_configuration_files (CASU_config, CASU_workers, ISI_config, ISI_path, run_folder):
+    cfg_folder = os.path.join (run_folder, "cfgs")
+    os.makedirs (cfg_folder)
+    # read ISI configuration file
+    ISI_config_filename = os.path.expanduser (os.path.join (ISI_path, ISI_config))
+    with open (ISI_config_filename) as _f:
+        ISI_cfg = yaml.safe_load (_f)
+        setup = ISI_cfg ['problem_setup']
+        alloc_file = os.path.join (ISI_path, setup ['allocfile']) # alloc file defines the master casu for each node in DS
+        graph_file = os.path.join (ISI_path, setup ['graphfile']) # graph file specifies edges
+    files_to_copy = [
+        CASU_config,
+        CASU_workers,
+        ISI_config_filename,
+        alloc_file,
+        graph_file,
+    ]
+    for filename in files_to_copy:
+        short_name = os.path.basename (filename)
+        print ('[I] copying file {} to {}'.format (short_name, run_folder))
+        shutil.copy2 (filename, os.path.join (run_folder, short_name))
 
 def process_arguments ():
     parser = argparse.ArgumentParser (
