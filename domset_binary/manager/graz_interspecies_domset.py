@@ -3,12 +3,14 @@ from __future__ import print_function
 import argparse
 import os.path
 import subprocess
+import yaml
 
 import util
 
 def main ():
     args = process_arguments ()
     run_folder = calculate_experiment_folder_for_new_run ()
+    create_background_video (args, run_folder)
     p1 = run_CASU (args.CASU_config, args.CASU_workers, run_folder)
     p2 = run_ISI (args.ISI_config, args.ISI_path, run_folder)
     p1.wait ()
@@ -26,6 +28,23 @@ def calculate_experiment_folder_for_new_run ():
             os.makedirs (result)
             return result
         run_number += 1
+
+def create_background_video (args, run_folder):
+    print ('Close the lab door, close the curtains and turn off the lights...')
+    raw_input ('and press ENTER to record a background video')
+    with open (args.config, 'r') as fd:
+        cfg = yaml.load (fd)
+    number_frames = cfg ['video']['frames_per_second'] * 2
+    process_recording = util.record_video_gstreamer (
+        os.path.join (run_folder, 'background-video.avi'),
+        number_frames,
+        cfg ['video']['frames_per_second'],
+        cfg ['video']['crop_left'],
+        cfg ['video']['crop_right'],
+        cfg ['video']['crop_top'],
+        cfg ['video']['crop_bottom'])
+    process_recording.wait ()
+
 
 def run_CASU (config, workers, run_folder, debug = False):
     command = [
