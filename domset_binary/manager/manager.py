@@ -13,6 +13,8 @@ import util
 import worker_settings
 import worker_stub
 
+TEST_DURATION = 5 # duration of a test run in minutes
+
 def main ():
     try:
         os.makedirs ("tmp")
@@ -60,6 +62,10 @@ def deploy (lwsg, g):
         g)
 
 def main_operations (args, cfg, lwsg):
+    if args.test_run:
+        experiment_duration = TEST_DURATION
+    else:
+        experiment_duration = cfg ['experiment_duration']
     dws = worker_stub.connect_workers (lwsg)
     if args.run_folder is not None:
         check_experiment_folder (args.run_folder)
@@ -71,8 +77,8 @@ def main_operations (args, cfg, lwsg):
     print ('Press ENTER to start DOMSET and start video recording')
     raw_input ('> ')
     send_start_command_to_workers (dws)
-    print ('[I] recording a {} minutes video'.format (cfg ['experiment_duration']))
-    number_frames = cfg ['video']['frames_per_second'] * cfg ['experiment_duration'] * 60
+    print ('[I] recording a {} minutes video'.format (experiment_duration))
+    number_frames = cfg ['video']['frames_per_second'] * experiment_duration * 60
     process_recording = util.record_video_gstreamer (
         os.path.join (experiment_folder, 'video.avi'),
         number_frames,
@@ -119,6 +125,11 @@ def process_arguments ():
         metavar = 'PATH',
         type = str,
         help = 'folder where data files are stored.  If not provided a non existant folder named run-xxx will be used.'
+    )
+    parser.add_argument (
+        '--test-run',
+        action = 'store_true',
+        help = 'do a test run with a length of {} minutes'.format (TEST_DURATION)
     )
     return parser.parse_args ()
 
