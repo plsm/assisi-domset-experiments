@@ -6,12 +6,17 @@
 
 import argparse
 import copy
-import functools
 import pygraphviz
 import yaml
 
 BEE_ARENA = 'beearena'
 INTER_CASU_DISTANCE = 9
+
+CAMERA_SCALE = 189
+CAMERA_MARGIN_LEFT = 100
+CAMERA_MARGIN_RIGHT = 100
+CAMERA_MARGIN_TOP = 100
+CAMERA_MARGIN_BOTTOM = 100
 
 class AbstractGenerator:
     def __init__ (self, _graph_filename, _arena_filename):
@@ -43,10 +48,10 @@ class AbstractGenerator:
         return result
 
     def assign_CASUs_to_nodes (self):
-        '''
+        """
         Go through the solution attribute and assign CASUs to the nodes in the logical graph.
         :return:
-        '''
+        """
         for k, v in self.solution.iteritems ():
             self.node_CASUs [k [0]].append (v [0])
             self.node_CASUs [k [1]].append (v [1])
@@ -55,11 +60,13 @@ class AbstractGenerator:
             print ('{}: {}'.format (k, v))
 
     def create_CASU_config_file (self):
-        '''
+        """
         Create the configuration file used by the CASU controllers manager.
         This file contains which CASUs are used, the CASU neighbourhood message network, the cropping video parameters.
         :return:
-        '''
+        """
+        video = self.__compute_video_cropping ()
+        video ['frames_per_second'] = 10
         contents = {
             'controllers': {
                 'domset': {
@@ -88,12 +95,24 @@ class AbstractGenerator:
                     for k, v in self.node_CASUs.iteritems ()
                 }
             },
-            'experiment_duration': 25
+            'experiment_duration': 25,
+            'video': video
         }
         with open ('project.config', 'w') as fd:
             yaml.dump (contents, fd, default_flow_style = False)
             fd.close ()
         print ([[e[0].name, e[1].name] for e in self.graph.edges ()])
+
+    def create_ISI_nodemasters_file (self):
+        contents = {
+            'master_casus': {
+                k: min ([int (c [-3:]) for c in v])
+                for k, v in self.node_CASUs.iteritems ()
+            }
+        }
+        with open ('project.nodemasters', 'w') as fd:
+            yaml.dump (contents, fd, default_flow_style = False)
+            fd.close ()
 
     def __used_casus (self):
         result = []
@@ -101,15 +120,27 @@ class AbstractGenerator:
             result.extend ([int (c [-3:]) for c in v])
         return result
 
+    def __compute_video_cropping (self):
+        used_casus = self.__used_casus ()
+        xs = [self.arena [BEE_ARENA]['casu-{:03d}'.format (_c)]['x'] for _c in used_casus]
+        ys = [self.arena [BEE_ARENA]['casu-{:03d}'.format (_c)]['y'] for _c in used_casus]
+        result = {
+            'crop_left': CAMERA_SCALE * (min (xs) + 36)/ INTER_CASU_DISTANCE + CAMERA_MARGIN_LEFT,
+            'crop_right': 250,
+            'crop_bottom': 150,
+            'crop_top': CAMERA_SCALE * (min (ys) + 36)/ INTER_CASU_DISTANCE + CAMERA_MARGIN_TOP
+        }
+        return result
+
     def cmp_casu_keys (self, key1, key2):
-        '''
+        """
         Compare two CASUs based on their physical location in the bee
         arena.  This takes into account stadium arena placement: either
         to the right (increasing x coordinate) or to the bottom
         (decreasing y coordinate) of a selected CASU.  When searching
         for CASUs to place stadium arenas, we go from CASUs in the top
         left corner of the bee arena.
-        '''
+        """
         x1 = self.arena [BEE_ARENA][key1]['pose']['x']
         y1 = self.arena [BEE_ARENA][key1]['pose']['y']
         x2 = self.arena [BEE_ARENA][key2]['pose']['x']
@@ -132,8 +163,7 @@ class ExhaustiveSearch (AbstractGenerator):
             print ('Found a solution')
             self.assign_CASUs_to_nodes ()
             self.create_CASU_config_file ()
-            #for k, v in self.solution.iteritems ():
-            #    print (k, v)
+            self.create_ISI_nodemasters_file ()
 
     def __main_loop (self, list_edges, available_arena_locations):
         if len (list_edges) > 0 and len (available_arena_locations) == 0:
