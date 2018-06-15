@@ -9,6 +9,7 @@ import zmq_sock_utils
 TERMINATE = 1
 START = 2
 INITIALIZE = 3
+IR_CALIBRATION = 4
 OK = 1001
 
 
@@ -29,10 +30,12 @@ def main (rtc_file_name, casu_number, worker_address):
         if message [0] == INITIALIZE:
             print ('Initialize message')
             zmq_sock_utils.send (socket, [OK])
-        elif message [0] == START:
+        elif message [0] == IR_CALIBRATION:
             ctrl.calibrate_ir_thresholds ()
             ctrl.initialize_temperature ()
-            ctrl.initial_wait (duration = 60)
+            #ctrl.initial_wait (duration = 60)
+            zmq_sock_utils.send (socket, [OK])
+        elif message [0] == START:
             ctrl.start ()
             zmq_sock_utils.send (socket, [OK])
         elif message [0] == TERMINATE:

@@ -6,6 +6,7 @@ import os
 import os.path
 import re
 import subprocess
+import time
 import yaml
 
 import graph
@@ -74,6 +75,8 @@ def main_operations (args, cfg, lwsg):
     print ('Sending initialize message to all workers')
     for ws in dws.values ():
         ws.initialize ()
+    print ('All the CASU workers are up and running')
+    IR_calibration_step (dws)
     print ('Press ENTER to start DOMSET and start video recording')
     raw_input ('> ')
     send_start_command_to_workers (dws)
@@ -87,6 +90,7 @@ def main_operations (args, cfg, lwsg):
         cfg ['video']['crop_right'],
         cfg ['video']['crop_top'],
         cfg ['video']['crop_bottom'])
+    time.sleep (10)
     try:
         process_recording.wait ()
     except KeyboardInterrupt:
@@ -171,6 +175,21 @@ def run_command_deploy (config, workers):
         ]
     pdeploy = subprocess.Popen (command)
     return pdeploy
+
+def IR_calibration_step (dict_worker_stubs):
+    """
+    Sends a command to the code running in the beagle bones that starts the DOMSET thread.
+
+    :param dict_worker_stubs:
+    """
+    print ('\n* ** Infrared calibration step ** *')
+    for ws in dict_worker_stubs.values ():
+        ws.ir_calibration_send ()
+    for ws in dict_worker_stubs.values ():
+        ws.ir_calibration_recv ()
+    print ('Infrared calibration finished.')
+    print ('Go and put the bees.')
+    raw_input ('Press ENTER when you are done')
 
 def send_start_command_to_workers (dict_worker_stubs):
     """

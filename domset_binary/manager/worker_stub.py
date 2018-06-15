@@ -15,6 +15,19 @@ class WorkerStub:
         answer = zmq_sock_utils.send_recv (self.socket, [worker.INITIALIZE])
         print ("Worker responded with: %s" % (str (answer)))
 
+    def ir_calibration_send (self):
+        """
+        Ask the DOMSET controller to do the infra-red-calibration.
+        """
+        print ("Sending infrared calibration command to worker responsible for casu #%d..." % (self.casu_number))
+        zmq_sock_utils.send (self.socket, [worker.IR_CALIBRATION])
+
+    def ir_calibration_recv (self):
+        """
+        """
+        answer = zmq_sock_utils.recv (self.socket)
+        print ("Worker responded with: %s" % (str (answer)))
+
     def start_domset_send (self):
         """
         Initialize the DOMSET controller.
