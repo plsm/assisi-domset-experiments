@@ -31,10 +31,10 @@ def calculate_experiment_folder_for_new_run ():
 
 def create_background_video (args, run_folder):
     print ('Close the lab door, close the curtains and turn off the lights...')
-    raw_input ('and press ENTER to record a background video')
-    with open (args.config, 'r') as fd:
+    raw_input ('and press ENTER to record a background video, WITHOUT bees!')
+    with open (args.CASU_config, 'r') as fd:
         cfg = yaml.load (fd)
-    number_frames = cfg ['video']['frames_per_second'] * 2
+    number_frames = cfg ['video']['frames_per_second'] * 10
     process_recording = util.record_video_gstreamer (
         os.path.join (run_folder, 'background-video.avi'),
         number_frames,
