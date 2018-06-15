@@ -85,6 +85,7 @@ def main_operations (args, cfg, lwsg):
     print ('In experiments with bee fish, this step has to be coordinated with Paris')
     print ('Press ENTER to start DOMSET and start video recording')
     raw_input ('> ')
+    process_ISI = run_ISI (args.ISI_config, args.ISI_path, experiment_folder)
     send_start_command_to_workers (dws)
     print ('[I] recording a {} minutes video'.format (experiment_duration))
     number_frames = cfg ['video']['frames_per_second'] * experiment_duration * 60
@@ -106,6 +107,7 @@ def main_operations (args, cfg, lwsg):
     send_terminate_command_to_workers (dws)
     print ('In the window with red background and titled «deploy», press ENTER.')
     process_deploy.wait ()
+    process_ISI.wait ()
     ##
     print ('\n* ** Collect data step ** *')
     worker_settings.collect_data_from_workers (lwsg, experiment_folder)
@@ -145,6 +147,20 @@ def process_arguments ():
         '--test-run',
         action = 'store_true',
         help = 'do a test run with a length of {} minutes'.format (TEST_DURATION)
+    )
+    parser.add_argument (
+        '--ISI-config',
+        #required = True,
+        type = str,
+        metavar = 'FILENAME',
+        help = 'Configuration file for ISI'
+    )
+    parser.add_argument (
+        '--ISI-path',
+        type = str,
+        metavar = 'PATH',
+        default = '.',
+        help = 'path to ISI files'
     )
     return parser.parse_args ()
 
@@ -186,6 +202,23 @@ def run_command_deploy (config, workers):
         ]
     pdeploy = subprocess.Popen (command)
     return pdeploy
+
+def run_ISI (config, path, run_folder, debug = False):
+    ISI_log_folder = os.path.join (run_folder, 'ISIlog')
+    os.makedirs (ISI_log_folder)
+    command = [
+        util.XTERM,
+        '-geometry', '80x20+0+400',
+        '-bg', 'rgb:0/0/1F',
+        '-title', 'ISI',
+        '-e',
+        'python /home/assisi/assisi/inter-domset/inter_domset/ISI/ISI.py --pth {} --proj_conf {} --logpath {}'.format (path, config, ISI_log_folder)
+    ]
+    if debug:
+        print ('Full ISI command is:')
+        print (' '.join (command))
+        print ()
+    return subprocess.Popen (command)
 
 def IR_calibration_step (dict_worker_stubs):
     """
