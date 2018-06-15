@@ -71,12 +71,18 @@ def main_operations (args, cfg, lwsg):
     if args.run_folder is not None:
         check_experiment_folder (args.run_folder)
     experiment_folder = calculate_experiment_folder_for_new_run () if args.run_folder is None else args.run_folder
+    ##
+    print ('\n* ** Deployment step ** *')
     process_deploy = run_command_deploy (args.config, args.workers)
     print ('Sending initialize message to all workers')
     for ws in dws.values ():
         ws.initialize ()
     print ('All the CASU workers are up and running')
+    ##
     IR_calibration_step (dws)
+    ##
+    print ('\n* ** DOMSET algorithm and video recording step ** *')
+    print ('In experiments with bee fish, this step has to be coordinated with Paris')
     print ('Press ENTER to start DOMSET and start video recording')
     raw_input ('> ')
     send_start_command_to_workers (dws)
@@ -95,8 +101,13 @@ def main_operations (args, cfg, lwsg):
         process_recording.wait ()
     except KeyboardInterrupt:
         print ('Terminate processes')
+    ##
+    print ('\n* ** Termination step ** *')
     send_terminate_command_to_workers (dws)
+    print ('In the window with red background and titled «deploy», press ENTER.')
     process_deploy.wait ()
+    ##
+    print ('\n* ** Collect data step ** *')
     worker_settings.collect_data_from_workers (lwsg, experiment_folder)
 
 def process_arguments ():
@@ -189,7 +200,8 @@ def IR_calibration_step (dict_worker_stubs):
         ws.ir_calibration_recv ()
     print ('Infrared calibration finished.')
     print ('Go and put the bees.')
-    raw_input ('Press ENTER when you are done')
+    print ('Press ENTER when you are done')
+    raw_input ('> ')
 
 def send_start_command_to_workers (dict_worker_stubs):
     """
