@@ -109,7 +109,8 @@ def main_operations (args, cfg, lwsg):
     ##
     print ('\n* ** Termination step ** *')
     send_terminate_command_to_workers (dws)
-    print ('In the window with red background and titled «deploy», press ENTER.')
+    print ('In the window with dark red background and titled «deploy», press ENTER.')
+    print ('In the window with dark green background and title «ISI», press CONTROL-C.')
     process_deploy.wait ()
     process_ISI.wait ()
     ##
