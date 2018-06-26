@@ -19,12 +19,18 @@ CAMERA_MARGIN_TOP = 100
 CAMERA_MARGIN_BOTTOM = 100
 
 class AbstractGenerator:
-    def __init__ (self, _graph_filename, _arena_filename, _project_name):
+    def __init__ (self, _graph_filename, _arena_filename, _project_name, _number_copies):
         self.project_name = _project_name
+        self.number_copies = _number_copies
         self.graph = pygraphviz.AGraph (_graph_filename)
         with open (_arena_filename, 'r') as fd:
             self.arena = yaml.safe_load (fd)
-        self.node_CASUs = {str (node.name) : [] for node in self.graph.nodes ()}
+        self.node_CASUs = {
+#            'G{}_{}'.format (graph_index, str (node.name)) : []
+            AbstractGenerator.__graph_node_str (graph_index, node.name) : []
+            for node in self.graph.nodes ()
+            for graph_index in range (1, self.number_copies + 1)
+        }
         self.available_CASUs = {key : True for key in self.arena [BEE_ARENA].keys ()}
         self.available_arena_locations = {}
         for casu_key in self.arena [BEE_ARENA].keys ():
@@ -53,9 +59,12 @@ class AbstractGenerator:
         Go through the solution attribute and assign CASUs to the nodes in the logical graph.
         :return:
         """
+        print (self.solution)
         for k, v in self.solution.iteritems ():
-            self.node_CASUs [k [0]].append (v [0])
-            self.node_CASUs [k [1]].append (v [1])
+            key = AbstractGenerator.__graph_node_str (k [0], k[1][0])
+            self.node_CASUs [key].append (v [0])
+            key = AbstractGenerator.__graph_node_str (k [0], k[1][1])
+            self.node_CASUs [key].append (v [1])
         print ('CASUs assigned to logical nodes')
         for k, v in self.node_CASUs.iteritems ():
             print ('{}: {}'.format (k, v))
@@ -90,7 +99,12 @@ class AbstractGenerator:
                 'user': 'pedro'
             },
             'graph': {
-                'edges': [[str (e[0].name), str (e[1].name)] for e in self.graph.edges ()],
+                'edges': [
+                    [AbstractGenerator.__graph_node_str (graph_index, n.name) for n in e]
+#                    [str (e[0].name), str (e[1].name)]
+                    for e in self.graph.edges ()
+                    for graph_index in range (1, self.number_copies + 1)
+                ],
                 'node_CASUs': {
                     k: [int (c [-3:]) for c in v]
                     for k, v in self.node_CASUs.iteritems ()
@@ -128,6 +142,11 @@ class AbstractGenerator:
                 fd.write ('<li>{} and {}</li>'.format (casu1, casu2))
             fd.write ('</ul></p></body></html>')
             fd.close ()
+
+    @staticmethod
+    def __graph_node_str (graph_index, graph_node):
+        # type: (int, object) -> str
+        return 'G{}_{}'.format (graph_index, str (graph_node))
 
     def __used_casus (self):
         result = []
@@ -169,23 +188,26 @@ class AbstractGenerator:
 
 # Exhaustive
 class ExhaustiveSearch (AbstractGenerator):
-    def __init__ (self, _graph_filename, _arena_filename, _project_name):
-        AbstractGenerator.__init__ (self, _graph_filename, _arena_filename, _project_name)
+    def __init__ (self, _graph_filename, _arena_filename, _project_name, _number_copies):
+        AbstractGenerator.__init__ (self, _graph_filename, _arena_filename, _project_name, _number_copies)
 
     def run (self):
         list_edges = self.graph.edges ()
-        if self.__main_loop (list_edges, self.available_arena_locations):
+        if self.__main_loop (list_edges, self.available_arena_locations, 1):
             print ('Found a solution')
             self.assign_CASUs_to_nodes ()
             self.create_CASU_config_file ()
             self.create_ISI_nodemasters_file ()
             self.create_arena_location_file ()
 
-    def __main_loop (self, list_edges, available_arena_locations):
+    def __main_loop (self, list_edges, available_arena_locations, graph_index):
         if len (list_edges) > 0 and len (available_arena_locations) == 0:
             return False
         elif len (list_edges) == 0:
-            return True
+            if graph_index == self.number_copies:
+                return True
+            else:
+                return self.__main_loop (self.graph.edges (), available_arena_locations, graph_index + 1)
         new_list_edges = list_edges [1:]
         this_edge = list_edges [0]
         list_keys = available_arena_locations.keys ()
@@ -198,8 +220,8 @@ class ExhaustiveSearch (AbstractGenerator):
                 del new_available_arena_locations [casu1_key]
                 if casu2_key in new_available_arena_locations:
                     del new_available_arena_locations [casu2_key]
-                if self.__main_loop (new_list_edges, new_available_arena_locations):
-                    self.solution [this_edge] = (casu1_key, casu2_key)
+                if self.__main_loop (new_list_edges, new_available_arena_locations, graph_index):
+                    self.solution [(graph_index, this_edge)] = (casu1_key, casu2_key)
                     return True
         return False
 
@@ -213,7 +235,7 @@ def main ():
             project_name = project_name [:-4]
     else:
         project_name = args.project
-    ag = ExhaustiveSearch (args.graph, args.arena, project_name)
+    ag = ExhaustiveSearch (args.graph, args.arena, project_name, args.copy)
     ag.run ()
 
 def parse_arguments ():
@@ -242,6 +264,13 @@ def parse_arguments ():
         metavar = 'NAME',
         type = str,
         help = 'Name to be used in the config and nodemasters files.  By default is the name of the Graphviz file.'
+    )
+    parser.add_argument (
+        '--copy', '-c',
+        metavar = 'N',
+        type = int,
+        default = 1,
+        help = 'How many copies of the graph should be physically created.'
     )
     return parser.parse_args ()
 
