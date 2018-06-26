@@ -6,7 +6,9 @@
 
 import argparse
 import copy
+import inspyred
 import pygraphviz
+import random
 import yaml
 
 BEE_ARENA = 'beearena'
@@ -26,8 +28,7 @@ class AbstractGenerator:
         with open (_arena_filename, 'r') as fd:
             self.arena = yaml.safe_load (fd)
         self.node_CASUs = {
-#            'G{}_{}'.format (graph_index, str (node.name)) : []
-            AbstractGenerator.__graph_node_str (graph_index, node.name) : []
+            AbstractGenerator.graph_node_str (graph_index, node.name) : []
             for node in self.graph.nodes ()
             for graph_index in range (1, self.number_copies + 1)
         }
@@ -54,6 +55,20 @@ class AbstractGenerator:
                 result.append (casup_key)
         return result
 
+    def can_place_arena (self, casu_1_key, casu_2_key):
+        x1 = self.arena [BEE_ARENA][casu_1_key]['pose']['x']
+        y1 = self.arena [BEE_ARENA][casu_1_key]['pose']['y']
+        x2 = self.arena [BEE_ARENA][casu_2_key]['pose']['x']
+        y2 = self.arena [BEE_ARENA][casu_2_key]['pose']['y']
+        return (abs (x1 - x2) == INTER_CASU_DISTANCE and y1 == y2) or (x1 == x2 and abs (y1 - y2) == INTER_CASU_DISTANCE)
+
+    def casu_distance (self, casu_1_key, casu_2_key):
+        x1 = self.arena [BEE_ARENA][casu_1_key]['pose']['x']
+        y1 = self.arena [BEE_ARENA][casu_1_key]['pose']['y']
+        x2 = self.arena [BEE_ARENA][casu_2_key]['pose']['x']
+        y2 = self.arena [BEE_ARENA][casu_2_key]['pose']['y']
+        return (abs (x1 - x2) + abs (y1 - y2)) / INTER_CASU_DISTANCE
+
     def assign_CASUs_to_nodes (self):
         """
         Go through the solution attribute and assign CASUs to the nodes in the logical graph.
@@ -61,9 +76,9 @@ class AbstractGenerator:
         """
         print (self.solution)
         for k, v in self.solution.iteritems ():
-            key = AbstractGenerator.__graph_node_str (k [0], k[1][0])
+            key = AbstractGenerator.graph_node_str (k [0], k[1][0])
             self.node_CASUs [key].append (v [0])
-            key = AbstractGenerator.__graph_node_str (k [0], k[1][1])
+            key = AbstractGenerator.graph_node_str (k [0], k[1][1])
             self.node_CASUs [key].append (v [1])
         print ('CASUs assigned to logical nodes')
         for k, v in self.node_CASUs.iteritems ():
@@ -100,7 +115,7 @@ class AbstractGenerator:
             },
             'graph': {
                 'edges': [
-                    [AbstractGenerator.__graph_node_str (graph_index, n.name) for n in e]
+                    [AbstractGenerator.graph_node_str (graph_index, n.name) for n in e]
 #                    [str (e[0].name), str (e[1].name)]
                     for e in self.graph.edges ()
                     for graph_index in range (1, self.number_copies + 1)
@@ -144,9 +159,11 @@ class AbstractGenerator:
             fd.close ()
 
     @staticmethod
-    def __graph_node_str (graph_index, graph_node):
+    def graph_node_str (graph_index, graph_node):
         # type: (int, object) -> str
         return 'G{}_{}'.format (graph_index, str (graph_node))
+
+
 
     def __used_casus (self):
         result = []
@@ -225,6 +242,110 @@ class ExhaustiveSearch (AbstractGenerator):
                     return True
         return False
 
+class MinimizeNodeCASUsDistance_EvolutionaryAlgorithm (AbstractGenerator):
+    def __init__ (self, _graph_filename, _arena_filename, _project_name, _number_copies):
+        AbstractGenerator.__init__ (self, _graph_filename, _arena_filename, _project_name, _number_copies)
+        self.chromosome_size = self.number_copies * len (self.graph.edges ())
+        self.possible_shifts = {}
+        for casu_key_1 in self.arena [BEE_ARENA].keys ():
+            ps = []
+            for casu_key_2 in self.arena [BEE_ARENA].keys ():
+                if self.can_place_arena (casu_key_1, casu_key_2) and casu_key_2 in self.available_arena_locations:
+                    ps.append (casu_key_2)
+            if len (ps) > 0:
+                self.possible_shifts [casu_key_1] = ps
+
+    def run (self):
+        rng = random.Random ()
+        import logging
+        logger = logging.getLogger ('inspyred.ec')
+        logger.setLevel (logging.DEBUG)
+        file_handler = logging.FileHandler ('inspyred.log', mode='w')
+        file_handler.setLevel (logging.DEBUG)
+        formatter = logging.Formatter ('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        file_handler.setFormatter (formatter)
+        logger.addHandler (file_handler)
+
+        ea = inspyred.ec.EvolutionaryComputation (rng)
+        ea.selector = inspyred.ec.selectors.tournament_selection
+        ea.variator = [
+        #    inspyred.ec.variators.n_point_crossover,
+            self.mutator_shift__,
+        ]
+        ea.replacer = inspyred.ec.replacers.generational_replacement
+        ea.terminator = inspyred.ec.terminators.generation_termination
+        ea.logger = logger
+        final_pop = ea.evolve (
+            generator = self.generator,
+            evaluator = self.evaluate____,
+            maximize = False,
+            pop_size = 100,
+            max_generations = 50,
+            tournament_size = 5,
+            num_selected = 100,
+            num_elites = 1
+        )
+        for c in final_pop:
+            print (c)
+
+    def _random_neighbour (self, casu_key, random):
+        index = random.randint (0, len (self.available_arena_locations [casu_key]) - 1)
+        return self.available_arena_locations [casu_key][index]
+
+    def generator (self, random, args):
+        result = self.available_arena_locations.keys ()
+        random.shuffle (result)
+        result = result [:self.chromosome_size]
+        result = [(c, self._random_neighbour (c, random)) for c in result]
+        return result
+
+    def mutator_shift__ (self, random, candidates, args):
+        result = []
+        for c in candidates:
+            result.append (self.mutator_shift (random, c, args))
+        return result
+
+    def mutator_shift (self, random, candidate, args):
+        index = random.randint (0, self.chromosome_size - 1)
+        old_casu = candidate [index][0]
+        new_casu = self.possible_shifts [old_casu][random.randint (0, len (self.possible_shifts [old_casu]) - 1)]
+        new_direction = self._random_neighbour (new_casu, random)
+        result = copy.copy (candidate)
+        result [index] = (new_casu, new_direction)
+        return result
+
+    CASU_COLLISION_PENALTY = 1000
+
+    def evaluate____ (self, candidates, args):
+        result = []
+        for c in candidates:
+            result.append (self.evaluate (c))
+        return result
+
+    def evaluate (self, candidate):
+        result = 0
+        used_CASUs = {key : False for key in self.arena [BEE_ARENA].keys ()}
+        node_CASUs = copy.deepcopy (self.node_CASUs)
+        index = 0
+        for edge in self.graph.edges ():
+            for graph_index in range (1, self.number_copies + 1):
+                casu_key_1, casu_key_2 = candidate [index]
+                for a_casu_key in [casu_key_1, casu_key_2]:
+                    if used_CASUs [a_casu_key]:
+                        result += MinimizeNodeCASUsDistance_EvolutionaryAlgorithm.CASU_COLLISION_PENALTY
+                    used_CASUs [a_casu_key] = True
+                for a_node, a_casu_key in zip ([AbstractGenerator.graph_node_str (graph_index, n) for n in edge], [casu_key_1, casu_key_2]):
+                    for b_casu_key in node_CASUs [a_node]:
+                        result += self.casu_distance (a_casu_key, b_casu_key)
+                    node_CASUs [a_node].append (a_casu_key)
+                index += 1
+        return result
+
+ALGORITHMS = {
+    ExhaustiveSearch.__name__ : ExhaustiveSearch,
+    MinimizeNodeCASUsDistance_EvolutionaryAlgorithm.__name__ : MinimizeNodeCASUsDistance_EvolutionaryAlgorithm,
+}
+
 def main ():
     args = parse_arguments ()
     if args.project is None:
@@ -235,7 +356,10 @@ def main ():
             project_name = project_name [:-4]
     else:
         project_name = args.project
-    ag = ExhaustiveSearch (args.graph, args.arena, project_name, args.copy)
+    if args.algorithm == ExhaustiveSearch.__name__:
+        ag = ExhaustiveSearch (args.graph, args.arena, project_name, args.copy)
+    elif args.algorithm == MinimizeNodeCASUsDistance_EvolutionaryAlgorithm.__name__:
+        ag = MinimizeNodeCASUsDistance_EvolutionaryAlgorithm (args.graph, args.arena, project_name, args.copy)
     ag.run ()
 
 def parse_arguments ():
@@ -271,6 +395,12 @@ def parse_arguments ():
         type = int,
         default = 1,
         help = 'How many copies of the graph should be physically created.'
+    )
+    parser.add_argument (
+        '--algorithm',
+        choices = ALGORITHMS.keys (),
+        default = 'ExhaustiveSearch',
+        help = 'Which algorithm to use'
     )
     return parser.parse_args ()
 
