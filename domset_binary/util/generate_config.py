@@ -19,7 +19,8 @@ CAMERA_MARGIN_TOP = 100
 CAMERA_MARGIN_BOTTOM = 100
 
 class AbstractGenerator:
-    def __init__ (self, _graph_filename, _arena_filename):
+    def __init__ (self, _graph_filename, _arena_filename, _project_name):
+        self.project_name = _project_name
         self.graph = pygraphviz.AGraph (_graph_filename)
         with open (_arena_filename, 'r') as fd:
             self.arena = yaml.safe_load (fd)
@@ -98,7 +99,8 @@ class AbstractGenerator:
             'experiment_duration': 25,
             'video': video
         }
-        with open ('project.config', 'w') as fd:
+        fn = '{}.config'.format (self.project_name)
+        with open (fn, 'w') as fd:
             yaml.dump (contents, fd, default_flow_style = False)
             fd.close ()
         print ([[e[0].name, e[1].name] for e in self.graph.edges ()])
@@ -110,7 +112,8 @@ class AbstractGenerator:
                 for k, v in self.node_CASUs.iteritems ()
             }
         }
-        with open ('project.nodemasters', 'w') as fd:
+        fn = '{}.nodemasters'.format (self.project_name)
+        with open (fn, 'w') as fd:
             yaml.dump (contents, fd, default_flow_style = False)
             fd.close ()
 
@@ -154,8 +157,8 @@ class AbstractGenerator:
 
 # Exhaustive
 class ExhaustiveSearch (AbstractGenerator):
-    def __init__ (self, _graph_filename, _arena_filename):
-        AbstractGenerator.__init__ (self, _graph_filename, _arena_filename)
+    def __init__ (self, _graph_filename, _arena_filename, _project_name):
+        AbstractGenerator.__init__ (self, _graph_filename, _arena_filename, _project_name)
 
     def run (self):
         list_edges = self.graph.edges ()
@@ -191,7 +194,15 @@ class ExhaustiveSearch (AbstractGenerator):
 
 def main ():
     args = parse_arguments ()
-    ag = ExhaustiveSearch (args.graph, args.arena)
+    if args.project is None:
+        project_name = args.graph
+        if project_name.lower ().endswith ('.gv'):
+            project_name = project_name [:-3]
+        elif project_name.lower ().endswith ('.dot'):
+            project_name = project_name [:-4]
+    else:
+        project_name = args.project
+    ag = ExhaustiveSearch (args.graph, args.arena, project_name)
     ag.run ()
 
 def parse_arguments ():
@@ -214,6 +225,12 @@ def parse_arguments ():
         type = str,
         required = True,
         help = 'Filename containing the description of available physical CASUs and their sockets'
+    )
+    parser.add_argument (
+        '--project', '-p',
+        metavar = 'NAME',
+        type = str,
+        help = 'Name to be used in the config and nodemasters files.  By default is the name of the Graphviz file.'
     )
     return parser.parse_args ()
 
