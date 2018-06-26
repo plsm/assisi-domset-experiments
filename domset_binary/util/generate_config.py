@@ -125,8 +125,8 @@ class AbstractGenerator:
 
     def __compute_video_cropping (self):
         used_casus = self.__used_casus ()
-        xs = [self.arena [BEE_ARENA]['casu-{:03d}'.format (_c)]['x'] for _c in used_casus]
-        ys = [self.arena [BEE_ARENA]['casu-{:03d}'.format (_c)]['y'] for _c in used_casus]
+        xs = [self.arena [BEE_ARENA]['casu-{:03d}'.format (_c)]['pose']['x'] for _c in used_casus]
+        ys = [self.arena [BEE_ARENA]['casu-{:03d}'.format (_c)]['pose']['y'] for _c in used_casus]
         result = {
             'crop_left': CAMERA_SCALE * (min (xs) + 36)/ INTER_CASU_DISTANCE + CAMERA_MARGIN_LEFT,
             'crop_right': 250,
