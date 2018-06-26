@@ -25,17 +25,17 @@ class AbstractGenerator:
         with open (_arena_filename, 'r') as fd:
             self.arena = yaml.safe_load (fd)
         self.node_CASUs = {str (node.name) : [] for node in self.graph.nodes ()}
-        #print (self.node_CASUs)
         self.available_CASUs = {key : True for key in self.arena [BEE_ARENA].keys ()}
-        #print (self.available_CASUs)
         self.available_arena_locations = {}
         for casu_key in self.arena [BEE_ARENA].keys ():
             ns = self.__nearby_CASUs (casu_key)
             if len (ns) > 0:
                 self.available_arena_locations [casu_key] = ns
+        self.solution = {}
+
+    def print_available_arena_locations (self):
         for k, v in self.available_arena_locations.iteritems():
             print (k, v)
-        self.solution = {}
 
     def __nearby_CASUs (self, casuc_key):
         result = []
@@ -103,7 +103,6 @@ class AbstractGenerator:
         with open (fn, 'w') as fd:
             yaml.dump (contents, fd, default_flow_style = False)
             fd.close ()
-        print ([[e[0].name, e[1].name] for e in self.graph.edges ()])
 
     def create_ISI_nodemasters_file (self):
         contents = {
@@ -115,6 +114,19 @@ class AbstractGenerator:
         fn = '{}.nodemasters'.format (self.project_name)
         with open (fn, 'w') as fd:
             yaml.dump (contents, fd, default_flow_style = False)
+            fd.close ()
+
+    def create_arena_location_file (self):
+        fn = '{}.html'.format (self.project_name)
+        with open (fn, 'w') as fd:
+            fd.write ('<html><body><p>Place an arena between CASUs<ul>')
+            arenas = self.solution.values ()
+            arenas.sort ()
+            for v in arenas:
+                casu1 = int (v [0][-3:])
+                casu2 = int (v [1][-3:])
+                fd.write ('<li>{} and {}</li>'.format (casu1, casu2))
+            fd.write ('</ul></p></body></html>')
             fd.close ()
 
     def __used_casus (self):
@@ -167,6 +179,7 @@ class ExhaustiveSearch (AbstractGenerator):
             self.assign_CASUs_to_nodes ()
             self.create_CASU_config_file ()
             self.create_ISI_nodemasters_file ()
+            self.create_arena_location_file ()
 
     def __main_loop (self, list_edges, available_arena_locations):
         if len (list_edges) > 0 and len (available_arena_locations) == 0:
@@ -177,10 +190,8 @@ class ExhaustiveSearch (AbstractGenerator):
         this_edge = list_edges [0]
         list_keys = available_arena_locations.keys ()
         list_keys.sort (cmp = self.cmp_casu_keys)
-        print ('Sorted CASUS {}'.format (list_keys))
         for casu1_key in list_keys:
             casus_data = available_arena_locations [casu1_key]
-        #for casu1_key, casus_data in available_arena_locations.iteritems ():
             for casu2_key in casus_data:
                 print ('Trying placing edge {} in CASUs {} {}'.format (this_edge, casu1_key, casu2_key))
                 new_available_arena_locations = copy.copy (available_arena_locations)
