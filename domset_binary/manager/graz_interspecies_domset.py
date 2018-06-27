@@ -13,10 +13,10 @@ def main ():
     run_folder = calculate_experiment_folder_for_new_run ()
     create_background_video (args, run_folder)
     p1 = run_CASU (args.CASU_config, args.CASU_workers, run_folder)
-    p2 = run_ISI (args.ISI_config, args.ISI_path, run_folder)
+    p2 = run_ISI (args.ISI_config, args.ISI_path, run_folder, debug = True)
+    copy_configuration_files (args.CASU_config, args.CASU_workers, args.ISI_config, args.ISI_path, run_folder)
     p1.wait ()
     p2.wait ()
-    copy_configuration_files (args.CASU_config, args.CASU_workers, args.ISI_config, args.ISI_path, run_folder)
 
 def calculate_experiment_folder_for_new_run ():
     """
@@ -102,7 +102,7 @@ def copy_configuration_files (CASU_config, CASU_workers, ISI_config, ISI_path, r
     for filename in files_to_copy:
         short_name = os.path.basename (filename)
         print ('[I] copying file {} to {}'.format (short_name, run_folder))
-        shutil.copy2 (filename, os.path.join (run_folder, short_name))
+        shutil.copy2 (filename, os.path.join (cfg_folder, short_name))
 
 def process_arguments ():
     parser = argparse.ArgumentParser (
