@@ -9,6 +9,7 @@ import copy
 import inspyred
 import pygraphviz
 import random
+import re
 import yaml
 
 BEE_ARENA = 'beearena'
@@ -145,10 +146,17 @@ class AbstractGenerator:
             fd.close ()
 
     def create_ISI_nodemasters_file (self):
+        """
+        Create the ISI nodemaster file that contains the CASU number where the node master is running.
+        Currently ISI can handle one graph.
+        :return:
+        """
+        pattern = re.compile ('G1_.*') # this should match the result of method graph_node_str(int,object)
         contents = {
             'master_casus': {
                 k: min ([int (c [-3:]) for c in v])
                 for k, v in self.node_CASUs.iteritems ()
+                if pattern.match (k)
             }
         }
         fn = '{}.nodemasters'.format (self.project_name)
