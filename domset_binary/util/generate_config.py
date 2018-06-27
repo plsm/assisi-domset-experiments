@@ -84,6 +84,16 @@ class AbstractGenerator:
         for k, v in self.node_CASUs.iteritems ():
             print ('{}: {}'.format (k, v))
 
+    def create_files (self):
+        """
+        Creates the files that represent the assignment of CASUs to nodes in the logical graph.
+        Pre-condition: attributes solution and node_CASUs must have consistent data
+        :return:
+        """
+        self.create_CASU_config_file ()
+        self.create_ISI_nodemasters_file ()
+        self.create_arena_location_file ()
+
     def create_CASU_config_file (self):
         """
         Create the configuration file used by the CASU controllers manager.
@@ -213,9 +223,7 @@ class ExhaustiveSearch (AbstractGenerator):
         if self.__main_loop (list_edges, self.available_arena_locations, 1):
             print ('Found a solution')
             self.assign_CASUs_to_nodes ()
-            self.create_CASU_config_file ()
-            self.create_ISI_nodemasters_file ()
-            self.create_arena_location_file ()
+            self.create_files ()
 
     def __main_loop (self, list_edges, available_arena_locations, graph_index):
         if len (list_edges) > 0 and len (available_arena_locations) == 0:
