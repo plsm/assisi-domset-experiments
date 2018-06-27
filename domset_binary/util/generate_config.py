@@ -7,6 +7,7 @@
 import argparse
 import copy
 import inspyred
+import os.path
 import pygraphviz
 import random
 import re
@@ -22,9 +23,10 @@ CAMERA_MARGIN_TOP = 100
 CAMERA_MARGIN_BOTTOM = 100
 
 class AbstractGenerator:
-    def __init__ (self, _graph_filename, _arena_filename, _project_name, _number_copies):
+    def __init__ (self, _graph_filename, _arena_filename, _project_name, _number_copies, _ISI_config_filename):
         self.project_name = _project_name
         self.number_copies = _number_copies
+        self.ISI_config_filename = _ISI_config_filename
         self.graph = pygraphviz.AGraph (_graph_filename)
         with open (_arena_filename, 'r') as fd:
             self.arena = yaml.safe_load (fd)
@@ -95,6 +97,7 @@ class AbstractGenerator:
         self.create_ISI_nodemasters_file ()
         self.create_arena_location_file ()
         self.create_ISI_graph_yaml_file ()
+        self.create_ISI_conf_file ()
 
     def create_CASU_config_file (self):
         """
@@ -141,6 +144,16 @@ class AbstractGenerator:
             'video': video
         }
         fn = '{}.config'.format (self.project_name)
+        with open (fn, 'w') as fd:
+            yaml.dump (contents, fd, default_flow_style = False)
+            fd.close ()
+
+    def create_ISI_conf_file (self):
+        with open (self.ISI_config_filename, 'r') as fd:
+            contents = yaml.safe_load (fd)
+        contents ['problem_setup']['allocfile'] = '{}.nodemasters'.format (self.project_name)
+        contents ['problem_setup']['graphfile'] = '{}_graph.yml'.format (self.project_name)
+        fn = '{}.conf'.format (self.project_name)
         with open (fn, 'w') as fd:
             yaml.dump (contents, fd, default_flow_style = False)
             fd.close ()
@@ -245,8 +258,8 @@ class AbstractGenerator:
 
 # Exhaustive
 class ExhaustiveSearch (AbstractGenerator):
-    def __init__ (self, _graph_filename, _arena_filename, _project_name, _number_copies):
-        AbstractGenerator.__init__ (self, _graph_filename, _arena_filename, _project_name, _number_copies)
+    def __init__ (self, _graph_filename, _arena_filename, _project_name, _number_copies, _ISI_config_filename):
+        AbstractGenerator.__init__ (self, _graph_filename, _arena_filename, _project_name, _number_copies, _ISI_config_filename)
 
     def run (self):
         list_edges = self.graph.edges ()
@@ -281,8 +294,8 @@ class ExhaustiveSearch (AbstractGenerator):
         return False
 
 class MinimizeNodeCASUsDistance_EvolutionaryAlgorithm (AbstractGenerator):
-    def __init__ (self, _graph_filename, _arena_filename, _project_name, _number_copies):
-        AbstractGenerator.__init__ (self, _graph_filename, _arena_filename, _project_name, _number_copies)
+    def __init__ (self, _graph_filename, _arena_filename, _project_name, _number_copies, _ISI_config_filename):
+        AbstractGenerator.__init__ (self, _graph_filename, _arena_filename, _project_name, _number_copies, _ISI_config_filename)
         self.chromosome_size = self.number_copies * len (self.graph.edges ())
         self.possible_shifts = {}
         for casu_key_1 in self.arena [BEE_ARENA].keys ():
@@ -395,9 +408,9 @@ def main ():
     else:
         project_name = args.project
     if args.algorithm == ExhaustiveSearch.__name__:
-        ag = ExhaustiveSearch (args.graph, args.arena, project_name, args.copy)
+        ag = ExhaustiveSearch (args.graph, args.arena, project_name, args.copy, args.ISI_config)
     elif args.algorithm == MinimizeNodeCASUsDistance_EvolutionaryAlgorithm.__name__:
-        ag = MinimizeNodeCASUsDistance_EvolutionaryAlgorithm (args.graph, args.arena, project_name, args.copy)
+        ag = MinimizeNodeCASUsDistance_EvolutionaryAlgorithm (args.graph, args.arena, project_name, args.copy, args.ISI_config)
     ag.run ()
 
 def parse_arguments ():
@@ -439,6 +452,13 @@ def parse_arguments ():
         choices = ALGORITHMS.keys (),
         default = 'ExhaustiveSearch',
         help = 'Which algorithm to use'
+    )
+    parser.add_argument (
+        '--ISI-config',
+        metavar = 'FILENAME',
+        type = str,
+        required = True,
+        help = 'ISI configuration file with parameters that do not depend on the graph'
     )
     return parser.parse_args ()
 
