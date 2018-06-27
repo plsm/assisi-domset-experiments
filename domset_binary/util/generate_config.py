@@ -93,6 +93,7 @@ class AbstractGenerator:
         self.create_CASU_config_file ()
         self.create_ISI_nodemasters_file ()
         self.create_arena_location_file ()
+        self.create_ISI_graph_yaml_file ()
 
     def create_CASU_config_file (self):
         """
@@ -151,6 +152,27 @@ class AbstractGenerator:
             }
         }
         fn = '{}.nodemasters'.format (self.project_name)
+        with open (fn, 'w') as fd:
+            yaml.dump (contents, fd, default_flow_style = False)
+            fd.close ()
+
+    def create_ISI_graph_yaml_file (self):
+        """
+        Create the graph yaml file used by the ISI that contains the edges of the graph.
+        Currently ISI can handle one graph.
+        :return:
+        """
+        graph_index = 1
+        contents = {
+            'edges': [
+                [
+                    AbstractGenerator.graph_node_str (graph_index, node.name)
+                    for node in edge
+                ]
+                for edge in self.graph.edges ()
+            ]
+        }
+        fn = '{}_graph.yml'.format (self.project_name)
         with open (fn, 'w') as fd:
             yaml.dump (contents, fd, default_flow_style = False)
             fd.close ()
