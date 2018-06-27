@@ -5,6 +5,7 @@ import argparse
 import os
 import os.path
 import re
+import shutil
 import subprocess
 import time
 import yaml
@@ -110,9 +111,11 @@ def main_operations (args, cfg, lwsg):
     print ('\n* ** Termination step ** *')
     send_terminate_command_to_workers (dws)
     print ('In the window with dark red background and titled «deploy», press ENTER.')
-    print ('In the window with dark green background and title «ISI», press CONTROL-C.')
+    if process_ISI is not None:
+        print ('In the window with dark green background and title «ISI», press CONTROL-C.')
     process_deploy.wait ()
-    process_ISI.wait ()
+    if process_ISI is not None:
+        process_ISI.wait ()
     ##
     print ('\n* ** Collect data step ** *')
     worker_settings.collect_data_from_workers (lwsg, experiment_folder)
@@ -176,8 +179,8 @@ def calculate_experiment_folder_for_new_run ():
     """
     run_number = 1
     while True:
-        result = 'run-%03d/' % (run_number)
-        if not os.path.isdir (result) and not os.path.exists (result):
+        result = 'run-%03d' % (run_number)
+        if not os.path.exists (result):
             os.makedirs (result)
             return result
         run_number += 1
@@ -193,20 +196,23 @@ def check_experiment_folder (folder):
 def copy_configuration_files (CASU_config, CASU_workers, ISI_config, ISI_path, run_folder):
     cfg_folder = os.path.join (run_folder, "cfgs")
     os.makedirs (cfg_folder)
-    # read ISI configuration file
-    ISI_config_filename = os.path.expanduser (os.path.join (ISI_path, ISI_config))
-    with open (ISI_config_filename) as _f:
-        ISI_cfg = yaml.safe_load (_f)
-        setup = ISI_cfg ['problem_setup']
-        alloc_file = os.path.join (ISI_path, setup ['allocfile']) # alloc file defines the master casu for each node in DS
-        graph_file = os.path.join (ISI_path, setup ['graphfile']) # graph file specifies edges
     files_to_copy = [
         CASU_config,
         CASU_workers,
-        ISI_config_filename,
-        alloc_file,
-        graph_file,
     ]
+    # read ISI configuration file
+    if ISI_config is not None:
+        ISI_config_filename = os.path.expanduser (os.path.join (ISI_path, ISI_config))
+        with open (ISI_config_filename) as _f:
+            ISI_cfg = yaml.safe_load (_f)
+            setup = ISI_cfg ['problem_setup']
+            alloc_file = os.path.join (ISI_path, setup ['allocfile']) # alloc file defines the master casu for each node in DS
+            graph_file = os.path.join (ISI_path, setup ['graphfile']) # graph file specifies edges
+        files_to_copy.extend ([
+            ISI_config_filename,
+            alloc_file,
+            graph_file,
+        ])
     for filename in files_to_copy:
         short_name = os.path.basename (filename)
         print ('[I] copying file {} to {}'.format (short_name, cfg_folder))
@@ -246,6 +252,9 @@ def run_command_deploy (config, workers):
     return pdeploy
 
 def run_ISI (config, path, run_folder, debug = False):
+    if config is None:
+        print ('[I] there is no ISI configuration file, so there will no ISI process')
+        return None
     ISI_log_folder = os.path.join (run_folder, 'ISIlog')
     os.makedirs (ISI_log_folder)
     command = [
