@@ -6,6 +6,7 @@ import os
 import os.path
 import re
 import subprocess
+import time
 import yaml
 
 import graph
@@ -70,12 +71,25 @@ def main_operations (args, cfg, lwsg):
     if args.run_folder is not None:
         check_experiment_folder (args.run_folder)
     experiment_folder = calculate_experiment_folder_for_new_run () if args.run_folder is None else args.run_folder
+    ##
+    copy_configuration_files (args.config, args.workers, args.ISI_config, args.ISI_path, experiment_folder)
+    ##
+    print ('\n* ** Deployment step ** *')
     process_deploy = run_command_deploy (args.config, args.workers)
     print ('Sending initialize message to all workers')
     for ws in dws.values ():
         ws.initialize ()
+    print ('All the CASU workers are up and running')
+    ##
+    create_background_video (cfg, experiment_folder)
+    ##
+    IR_calibration_step (dws)
+    ##
+    print ('\n* ** DOMSET algorithm and video recording step ** *')
+    print ('In experiments with bee fish, this step has to be coordinated with Paris')
     print ('Press ENTER to start DOMSET and start video recording')
     raw_input ('> ')
+    process_ISI = run_ISI (args.ISI_config, args.ISI_path, experiment_folder)
     send_start_command_to_workers (dws)
     print ('[I] recording a {} minutes video'.format (experiment_duration))
     number_frames = cfg ['video']['frames_per_second'] * experiment_duration * 60
@@ -87,12 +101,20 @@ def main_operations (args, cfg, lwsg):
         cfg ['video']['crop_right'],
         cfg ['video']['crop_top'],
         cfg ['video']['crop_bottom'])
+    time.sleep (10)
     try:
         process_recording.wait ()
     except KeyboardInterrupt:
         print ('Terminate processes')
+    ##
+    print ('\n* ** Termination step ** *')
     send_terminate_command_to_workers (dws)
+    print ('In the window with dark red background and titled «deploy», press ENTER.')
+    print ('In the window with dark green background and title «ISI», press CONTROL-C.')
     process_deploy.wait ()
+    process_ISI.wait ()
+    ##
+    print ('\n* ** Collect data step ** *')
     worker_settings.collect_data_from_workers (lwsg, experiment_folder)
 
 def process_arguments ():
@@ -131,6 +153,20 @@ def process_arguments ():
         action = 'store_true',
         help = 'do a test run with a length of {} minutes'.format (TEST_DURATION)
     )
+    parser.add_argument (
+        '--ISI-config',
+        #required = True,
+        type = str,
+        metavar = 'FILENAME',
+        help = 'Configuration file for ISI'
+    )
+    parser.add_argument (
+        '--ISI-path',
+        type = str,
+        metavar = 'PATH',
+        default = '.',
+        help = 'path to ISI files'
+    )
     return parser.parse_args ()
 
 def calculate_experiment_folder_for_new_run ():
@@ -154,6 +190,43 @@ def check_experiment_folder (folder):
         elif casu_folders.match (filename):
             print ('[W] Files in casu log folder {} can be over written!'.format (filename))
 
+def copy_configuration_files (CASU_config, CASU_workers, ISI_config, ISI_path, run_folder):
+    cfg_folder = os.path.join (run_folder, "cfgs")
+    os.makedirs (cfg_folder)
+    # read ISI configuration file
+    ISI_config_filename = os.path.expanduser (os.path.join (ISI_path, ISI_config))
+    with open (ISI_config_filename) as _f:
+        ISI_cfg = yaml.safe_load (_f)
+        setup = ISI_cfg ['problem_setup']
+        alloc_file = os.path.join (ISI_path, setup ['allocfile']) # alloc file defines the master casu for each node in DS
+        graph_file = os.path.join (ISI_path, setup ['graphfile']) # graph file specifies edges
+    files_to_copy = [
+        CASU_config,
+        CASU_workers,
+        ISI_config_filename,
+        alloc_file,
+        graph_file,
+    ]
+    for filename in files_to_copy:
+        short_name = os.path.basename (filename)
+        print ('[I] copying file {} to {}'.format (short_name, cfg_folder))
+        shutil.copy2 (filename, os.path.join (cfg_folder, short_name))
+
+def create_background_video (cfg, run_folder):
+    print ('\n* ** Background video step ** *')
+    print ('Close the lab door, close the curtains and turn off the lights...')
+    raw_input ('and press ENTER to record a background video')
+    number_frames = cfg ['video']['frames_per_second'] * 2
+    process_recording = util.record_video_gstreamer (
+        os.path.join (run_folder, 'background-video.avi'),
+        number_frames,
+        cfg ['video']['frames_per_second'],
+        cfg ['video']['crop_left'],
+        cfg ['video']['crop_right'],
+        cfg ['video']['crop_top'],
+        cfg ['video']['crop_bottom'])
+    process_recording.wait ()
+
 def run_command_deploy (config, workers):
     """
     Create a new process that is going to deploy code to the beagle bones.
@@ -171,6 +244,39 @@ def run_command_deploy (config, workers):
         ]
     pdeploy = subprocess.Popen (command)
     return pdeploy
+
+def run_ISI (config, path, run_folder, debug = False):
+    ISI_log_folder = os.path.join (run_folder, 'ISIlog')
+    os.makedirs (ISI_log_folder)
+    command = [
+        util.XTERM,
+        '-geometry', '80x20+0+400',
+        '-bg', 'rgb:0/0/1F',
+        '-title', 'ISI',
+        '-e',
+        'python /home/assisi/assisi/inter-domset/inter_domset/ISI/ISI.py --pth {} --proj_conf {} --logpath {}'.format (path, config, ISI_log_folder)
+    ]
+    if debug:
+        print ('Full ISI command is:')
+        print (' '.join (command))
+        print ()
+    return subprocess.Popen (command)
+
+def IR_calibration_step (dict_worker_stubs):
+    """
+    Sends a command to the code running in the beagle bones that starts the DOMSET thread.
+
+    :param dict_worker_stubs:
+    """
+    print ('\n* ** Infrared calibration step ** *')
+    for ws in dict_worker_stubs.values ():
+        ws.ir_calibration_send ()
+    for ws in dict_worker_stubs.values ():
+        ws.ir_calibration_recv ()
+    print ('Infrared calibration finished.')
+    print ('Go and put the bees.')
+    print ('Press ENTER when you are done')
+    raw_input ('> ')
 
 def send_start_command_to_workers (dict_worker_stubs):
     """
