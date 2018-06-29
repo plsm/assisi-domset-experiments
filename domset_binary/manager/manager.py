@@ -14,6 +14,7 @@ import graph
 import util
 import worker_settings
 import worker_stub
+import domset_binary.util.zmq_sock_utils
 
 TEST_DURATION = 5 # duration of a test run in minutes
 
@@ -59,7 +60,7 @@ def deploy (lwsg, g):
         os.path.join (os.path.dirname (os.path.abspath (__file__)), 'worker.py'),
         [
             os.path.join (os.path.dirname (os.path.dirname (os.path.abspath (__file__))), 'controllers/domset_interspecies.py'),
-            os.path.join (os.path.dirname (os.path.abspath (__file__)), 'zmq_sock_utils.py'),
+            domset_binary.util.zmq_sock_utils.__file__
         ],
         g)
 

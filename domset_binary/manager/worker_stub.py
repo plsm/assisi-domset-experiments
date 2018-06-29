@@ -1,5 +1,6 @@
 import worker
-import zmq_sock_utils
+from domset_binary.util import zmq_sock_utils
+
 
 class WorkerStub:
     def __init__ (self, casu_number, socket):

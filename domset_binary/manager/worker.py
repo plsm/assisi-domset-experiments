@@ -4,8 +4,6 @@
 import sys
 import zmq
 
-import zmq_sock_utils
-
 TERMINATE = 1
 START = 2
 INITIALIZE = 3
@@ -15,6 +13,7 @@ OK = 1001
 
 def main (rtc_file_name, casu_number, worker_address):
     import domset_interspecies
+    import zmq_sock_utils
     print ('[I] Main function for CASU {}'.format (casu_number))
     # open ZMQ server socket
     context = zmq.Context ()
