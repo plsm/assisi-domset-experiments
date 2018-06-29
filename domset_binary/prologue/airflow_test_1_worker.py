@@ -21,7 +21,7 @@ def main (rtc_file_name, casu_number, worker_address):
     socket = context.socket (zmq.REP)
     socket.bind (worker_address)
     # Initialize domset algorithm
-    casu = casu.Casu (rtc_file_name, log = True)
+    a_casu = casu.Casu (rtc_file_name, log = True)
     # main thread loop
     go = True
     print ('[I] Entering main loop for CASU {}'.format (casu_number))
@@ -34,7 +34,7 @@ def main (rtc_file_name, casu_number, worker_address):
             print ('[I] Start leaf message for CASU {}'.format (casu_number))
             zmq_sock_utils.send (socket, [OK])
             temperature_profile_leaf (
-                casu = casu,
+                casu = a_casu,
                 initial_temperature= message ['temperature_reference'],
                 first_period_length = message ['first_period_length'],
                 rate_temperature_increase = message ['rate_temperature_increase_leaf'],
@@ -47,7 +47,7 @@ def main (rtc_file_name, casu_number, worker_address):
         elif message [0] == START_CORE:
             print ('[I] Start leaf message for CASU {}'.format (casu_number))
             temperature_profile_core (
-                casu = casu,
+                casu = a_casu,
                 initial_temperature= message ['temperature_reference'],
                 first_period_length = message ['first_period_length'],
                 rate_temperature_increase = message ['rate_temperature_increase_core'],
@@ -60,7 +60,7 @@ def main (rtc_file_name, casu_number, worker_address):
             go = False
         else:
             print ('Unknown message {}'.format (message))
-    casu.stop ()
+    a_casu.stop ()
     print ('[I] End of worker for CASU {}'.format (casu_number))
 
 LED_DURATION = 1
