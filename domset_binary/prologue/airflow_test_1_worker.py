@@ -2,11 +2,12 @@
 # -*- coding: utf-8 -*-
 
 import time
+import sys
 import zmq
 
 from assisipy import casu
 
-START_LEAF = 2
+START_LEAF = 1
 START_CORE = 2
 INITIALIZE = 3
 OK = 1001
@@ -19,6 +20,7 @@ def main (rtc_file_name, casu_number, worker_address):
     # open ZMQ server socket
     context = zmq.Context ()
     socket = context.socket (zmq.REP)
+    print ('[I] Binding to {}'.format (worker_address))
     socket.bind (worker_address)
     # Initialize domset algorithm
     a_casu = casu.Casu (rtc_file_name, log = True)
@@ -32,7 +34,6 @@ def main (rtc_file_name, casu_number, worker_address):
             zmq_sock_utils.send (socket, [OK])
         elif message [0] == START_LEAF:
             print ('[I] Start leaf message for CASU {}'.format (casu_number))
-            zmq_sock_utils.send (socket, [OK])
             temperature_profile_leaf (
                 casu = a_casu,
                 initial_temperature= message ['temperature_reference'],
@@ -45,7 +46,7 @@ def main (rtc_file_name, casu_number, worker_address):
             go = False
             zmq_sock_utils.send (socket, [OK])
         elif message [0] == START_CORE:
-            print ('[I] Start leaf message for CASU {}'.format (casu_number))
+            print ('[I] Start core message for CASU {}'.format (casu_number))
             temperature_profile_core (
                 casu = a_casu,
                 initial_temperature= message ['temperature_reference'],
