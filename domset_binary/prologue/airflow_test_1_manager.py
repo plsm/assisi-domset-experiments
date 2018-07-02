@@ -1,5 +1,6 @@
 
 import argparse
+import os.path
 import yaml
 import zmq
 
@@ -7,6 +8,7 @@ import assisipy_utils.darc.manager
 
 import airflow_test_1_worker
 from domset_binary.util import zmq_sock_utils
+import domset_binary.manager.util
 
 
 class Airflow_Test_Manager (assisipy_utils.darc.manager.DARC_Manager):
@@ -23,6 +25,7 @@ class Airflow_Test_Manager (assisipy_utils.darc.manager.DARC_Manager):
         )
 
     def monitor (self):
+        experiment_folder = '.'
         # open connections
         context = zmq.Context ()
         for a in self.atm_config ['arenas']:
@@ -36,9 +39,19 @@ class Airflow_Test_Manager (assisipy_utils.darc.manager.DARC_Manager):
         for a in self.atm_config ['arenas']:
             for sn in ['socket_core', 'socket_leaf']:
                 zmq_sock_utils.send_recv (a [sn], [airflow_test_1_worker.INITIALIZE])
-        # tell the use to put bees
+        # tell the user to put bees
         print ('Put bees in the arena and press ENTER')
         raw_input ('> ')
+        # record video
+        number_frames = self.atm_config ['video']['frames_per_second'] * (self.atm_config ['parameters']['first_period_length'] + self.atm_config ['parameters']['airflow_duration'] + self.atm_config ['parameters']['third_period_length'])
+        process_recording = domset_binary.manager.util.record_video_gstreamer (
+            os.path.join (experiment_folder, 'video.avi'),
+            number_frames,
+            self.atm_config ['video']['frames_per_second'],
+            self.atm_config ['video']['crop_left'],
+            self.atm_config ['video']['crop_right'],
+            self.atm_config ['video']['crop_top'],
+            self.atm_config ['video']['crop_bottom'])
         # tell each arena to do the temperature profile
         for a in self.atm_config ['arenas']:
             print ('Starting temperature profile for arena with CASUs {} and {}'.format (a ['core'], a ['leaf']))
@@ -50,6 +63,9 @@ class Airflow_Test_Manager (assisipy_utils.darc.manager.DARC_Manager):
             print ('Waiting for temperature profile in arena with CASUs {} and {} to finish'.format (a ['core'], a ['leaf']))
             zmq_sock_utils.recv (a ['socket_core'])
             zmq_sock_utils.recv (a ['socket_leaf'])
+        # finish
+        process_recording.wait ()
+        print ('Close the window titled "{} deploy"'.format (self.project))
 
 def compute_used_casus (config):
     result = []
@@ -63,9 +79,9 @@ def create_DARC_config_file (list_casus):
     contents = {
         'controllers': {
             'domset': {
-                'main': airflow_test_1_worker.__file__,
+                'main': airflow_test_1_worker.__file__ [:-1],
                 'extra': [
-                    zmq_sock_utils.__file__
+                    zmq_sock_utils.__file__ [:-1]
                 ],
                 'args': [],
                 'results': [],
@@ -73,7 +89,7 @@ def create_DARC_config_file (list_casus):
             }
         },
         'deploy': {
-            'user': 'pedro',
+            'user': 'assisi',
             'prefix': 'domset/airflow_test',
             'args': {
                 'add_casu_number': True,
