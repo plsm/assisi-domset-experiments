@@ -520,7 +520,11 @@ def flash_led (casu):
     casu.set_diagnostic_led_rgb (0, 0, 0)
 
 def temperature_profile_leaf (controller, first_period_length, airflow_duration, third_period_length):
-    controller._time_length = first_period_length + airflow_duration + third_period_length
+    controller._time_length = first_period_length
+    flash_led (controller.casu)
+    controller.start ()
+    controller.join ()
+    controller._time_length = airflow_duration + third_period_length
     flash_led (controller.casu)
     controller.start ()
     controller.join ()
@@ -540,13 +544,19 @@ def temperature_profile_core (controller, first_period_length, rate_temperature_
     # second period
     flash_led (controller.casu)
     controller.casu.set_airflow_intensity(1)
-    controller._time_length = airflow_duration + third_period_length
-    controller.spoof_group_size = node_size
-    controller.start ()
-    time.sleep (airflow_duration - LED_DURATION)
+    start = time.time ()
+    stop = start + airflow_duration - LED_DURATION
+    while time.time () < stop:
+        temperature_reference = max (
+            DomsetController.MIN_TEMPERATURE,
+            temperature_reference - rate_temperature_increase * DELTA)
+        controller.casu.set_temp (temperature_reference)
+        time.sleep (DELTA)
     controller.casu.airflow_standby ()
     # third period
-    flash_led (controller.casu)
+    controller._time_length = third_period_length
+    controller.spoof_group_size = node_size
+    controller.start ()
     controller.join ()
 
 if __name__ == '__main__':
