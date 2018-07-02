@@ -10,6 +10,7 @@ from datetime import datetime
 from copy import deepcopy
 import json
 from json import encoder
+import zmq
 
 import csv
 from math import exp
@@ -475,7 +476,7 @@ def main (rtc_file_name, casu_number, worker_address):
     # Initialize domset algorithm
     ctrl = DomsetController (rtc_file_name, log = True)
     ctrl.calibrate_ir_thresholds (500, 1)
-    ctrl.initialize_temperatur e()
+    ctrl.initialize_temperature ()
     # main thread loop
     go = True
     print ('[I] Entering main loop for CASU {}'.format (casu_number))
@@ -508,7 +509,7 @@ def main (rtc_file_name, casu_number, worker_address):
             go = False
         else:
             print ('Unknown message {}'.format (message))
-    a_casu.stop ()
+    ctrl.casu.stop ()
     print ('[I] End of worker for CASU {}'.format (casu_number))
 
 LED_DURATION = 1
@@ -518,13 +519,13 @@ def flash_led (casu):
     time.sleep (LED_DURATION)
     casu.set_diagnostic_led_rgb (0, 0, 0)
 
-def temperature_profile_leaf (controller, first_period_lengtn, airflow_duration, second_period_length):
-    controller._time_length = first_period_length + airflow_duration + second_period_length
+def temperature_profile_leaf (controller, first_period_length, airflow_duration, third_period_length):
+    controller._time_length = first_period_length + airflow_duration + third_period_length
     flash_led (controller.casu)
     controller.start ()
-    controller.wait ()
+    controller.join ()
 
-def temperature_profile_core (controller, first_period_length, rate_temperature_increase, core_node_size, airflow_duration, third_period_length):
+def temperature_profile_core (controller, first_period_length, rate_temperature_increase, node_size, airflow_duration, third_period_length):
     temperature_reference = DomsetController.MIN_TEMPERATURE
     # first period
     flash_led (controller.casu)
@@ -539,14 +540,14 @@ def temperature_profile_core (controller, first_period_length, rate_temperature_
     # second period
     flash_led (controller.casu)
     controller.casu.set_airflow_intensity(1)
-    controller._time_length = airflow_duration + second_period_length
+    controller._time_length = airflow_duration + third_period_length
     controller.spoof_group_size = node_size
     controller.start ()
     time.sleep (airflow_duration - LED_DURATION)
-    casu.airflow_standby ()
+    controller.casu.airflow_standby ()
     # third period
-    flash_led (casu)
-    controller.wait ()
+    flash_led (controller.casu)
+    controller.join ()
 
 if __name__ == '__main__':
     main (rtc_file_name = sys.argv [1], casu_number = int (sys.argv [2]), worker_address = sys.argv [3])

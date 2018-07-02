@@ -6,7 +6,7 @@ import zmq
 
 import assisipy_utils.darc.manager
 
-import airflow_test_1_worker
+import airflow_test_2_worker
 from domset_binary.util import zmq_sock_utils
 import domset_binary.manager.util
 
@@ -38,7 +38,7 @@ class Airflow_Test_Manager (assisipy_utils.darc.manager.DARC_Manager):
         # wait for all them to initialize
         for a in self.atm_config ['arenas']:
             for sn in ['socket_core', 'socket_leaf']:
-                zmq_sock_utils.send_recv (a [sn], [airflow_test_1_worker.INITIALIZE])
+                zmq_sock_utils.send_recv (a [sn], [airflow_test_2_worker.INITIALIZE])
         # tell the user to put bees
         print ('Put bees in the arena and press ENTER')
         raw_input ('> ')
@@ -55,9 +55,9 @@ class Airflow_Test_Manager (assisipy_utils.darc.manager.DARC_Manager):
         # tell each arena to do the temperature profile
         for a in self.atm_config ['arenas']:
             print ('Starting temperature profile for arena with CASUs {} and {}'.format (a ['core'], a ['leaf']))
-            self.atm_config['parameters'][0] = airflow_test_1_worker.START_CORE
+            self.atm_config['parameters'][0] = airflow_test_2_worker.START_CORE
             zmq_sock_utils.send (a ['socket_core'], self.atm_config ['parameters'])
-            self.atm_config['parameters'][0] = airflow_test_1_worker.START_LEAF
+            self.atm_config['parameters'][0] = airflow_test_2_worker.START_LEAF
             zmq_sock_utils.send (a ['socket_leaf'], self.atm_config ['parameters'])
         for a in self.atm_config ['arenas']:
             print ('Waiting for temperature profile in arena with CASUs {} and {} to finish'.format (a ['core'], a ['leaf']))
@@ -87,7 +87,7 @@ def create_DARC_config_file (list_casus):
     contents = {
         'controllers': {
             'domset': {
-                'main': check_file (airflow_test_1_worker.__file__),
+                'main': check_file (airflow_test_2_worker.__file__),
                 'extra': [
                     check_file (zmq_sock_utils.__file__)
                 ],
