@@ -82,7 +82,7 @@ def temperature_profile_leaf (casu, initial_temperature, first_period_length, ra
     start = time.time ()
     stop = start + airflow_duration + third_period_length - LED_DURATION
     while time.time () < stop:
-        temperature_reference = max (
+        temperature_reference = min (
             target_temperature,
             temperature_reference + rate_temperature_increase * DELTA)
         casu.set_temp (temperature_reference)
@@ -95,7 +95,7 @@ def temperature_profile_core (casu, initial_temperature, first_period_length, ra
     start = time.time ()
     stop = start + first_period_length - LED_DURATION
     while time.time () < stop:
-        temperature_reference = max (
+        temperature_reference = min (
             target_temperature,
             temperature_reference + rate_temperature_increase * DELTA)
         casu.set_temp (temperature_reference)
@@ -106,7 +106,7 @@ def temperature_profile_core (casu, initial_temperature, first_period_length, ra
     stop = start + airflow_duration - LED_DURATION
     casu.set_airflow_intensity(1)
     while time.time () < stop:
-        temperature_reference = min (
+        temperature_reference = max (
             initial_temperature,
             temperature_reference - rate_temperature_decrease * DELTA)
         casu.set_temp (temperature_reference)
@@ -117,7 +117,7 @@ def temperature_profile_core (casu, initial_temperature, first_period_length, ra
     start = time.time ()
     stop = start + third_period_length - LED_DURATION
     while time.time () < stop:
-        temperature_reference = min (
+        temperature_reference = max (
             initial_temperature,
             temperature_reference - rate_temperature_decrease * DELTA)
         casu.set_temp (temperature_reference)
