@@ -74,14 +74,22 @@ def compute_used_casus (config):
         result.append (a ['leaf'])
     return result
 
+def check_file (filename):
+    if filename [-2:] == 'py':
+        return filename
+    elif filename [-3:] == 'pyc':
+        return filename [:-1]
+    else:
+        print ('Don t know what to do with {}'.format (filename))
+        return None
 
 def create_DARC_config_file (list_casus):
     contents = {
         'controllers': {
             'domset': {
-                'main': airflow_test_1_worker.__file__ [:-1],
+                'main': check_file (airflow_test_1_worker.__file__),
                 'extra': [
-                    zmq_sock_utils.__file__ [:-1]
+                    check_file (zmq_sock_utils.__file__)
                 ],
                 'args': [],
                 'results': [],
