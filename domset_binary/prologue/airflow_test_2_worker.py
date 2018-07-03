@@ -318,6 +318,8 @@ class DomsetController:
                 self.communicate()
                 self.i = 0
         self.casu.airflow_standby()
+
+    def end (self):
         self.logfile.close ()
         print("Done")
 
@@ -534,6 +536,8 @@ def temperature_profile_leaf (controller, first_period_length, airflow_duration,
     flash_led (controller.casu)
     controller.reset ()
     controller.run ()
+    # stop cleanly
+    controller.end ()
 
 def temperature_profile_core (controller, first_period_length, rate_temperature_increase, node_size, airflow_duration, third_period_length):
     temperature_reference = DomsetController.MIN_TEMPERATURE
@@ -563,6 +567,8 @@ def temperature_profile_core (controller, first_period_length, rate_temperature_
     controller._time_length = third_period_length
     controller.spoof_group_size = node_size
     controller.run ()
+    # stop cleanly
+    controller.end ()
 
 if __name__ == '__main__':
     main (rtc_file_name = sys.argv [1], casu_number = int (sys.argv [2]), worker_address = sys.argv [3])
