@@ -22,15 +22,13 @@ OK = 1001
 
 DELTA = 5
 
-class DomsetController(Thread):
+class DomsetController:
 
     MAX_TEMPERATURE = 36
     MIN_TEMPERATURE = 26
     START_TEMPERATURE = 28
 
     def __init__(self, rtc_file, log=False):
-
-        Thread.__init__(self)
 
         self.turn_off_LED = False
         self.casu = casu.Casu(rtc_file,log=True)
@@ -133,6 +131,15 @@ class DomsetController(Thread):
 
         self.i = 0
 
+    def reset (self):
+        self.integrate_activity = 0.0
+        self.average_activity = 0.0
+        self.maximum_activity = 0.0
+        self.minimum_activity = 1.0
+        self.temp_ctrl = 0
+        self.initial_heating = 0
+        self.heat_float = 0.0
+        self.cool_float = 0.0
 
     def calibrate_ir_thresholds(self, margin = 500, duration = 10):
         self.casu.set_diagnostic_led_rgb(r=1)
@@ -520,14 +527,13 @@ def flash_led (casu):
     casu.set_diagnostic_led_rgb (0, 0, 0)
 
 def temperature_profile_leaf (controller, first_period_length, airflow_duration, third_period_length):
-    controller._time_length = first_period_length
+    controller._time_length = first_period_length - LED_DURATION
     flash_led (controller.casu)
-    controller.start ()
-    controller.join ()
-    controller._time_length = airflow_duration + third_period_length
+    controller.run ()
+    controller._time_length = airflow_duration + third_period_length - LED_DURATION
     flash_led (controller.casu)
-    controller.start ()
-    controller.join ()
+    controller.reset ()
+    controller.run ()
 
 def temperature_profile_core (controller, first_period_length, rate_temperature_increase, node_size, airflow_duration, third_period_length):
     temperature_reference = DomsetController.MIN_TEMPERATURE
@@ -556,8 +562,7 @@ def temperature_profile_core (controller, first_period_length, rate_temperature_
     # third period
     controller._time_length = third_period_length
     controller.spoof_group_size = node_size
-    controller.start ()
-    controller.join ()
+    controller.run ()
 
 if __name__ == '__main__':
     main (rtc_file_name = sys.argv [1], casu_number = int (sys.argv [2]), worker_address = sys.argv [3])
