@@ -4,6 +4,7 @@
 from __future__ import print_function
 
 import argparse
+import datetime
 import matplotlib.pyplot
 import os.path
 import yaml
@@ -49,10 +50,13 @@ def plot_arena (run_number, core_casu_number, leaf_casu_number, base_path):
     max_time = min ([a_casu_log.max_time () for a_casu_log in casu_logs])
     axes_temperature.set_xlim (min_time, max_time)
     axes_ir_raw.set_xlim (min_time, max_time)
-    axes_temperature.set_xlabel ('time (s)', fontsize = 7)
-    axes_temperature.set_ylabel (u'temperature (º)', fontsize = 7)
+    axes_temperature.set_xlabel ('time (m:ss)', fontsize = 7)
+    axes_temperature.set_ylabel (u'temperature (℃)', fontsize = 7)
     axes_ir_raw.set_ylabel ('infrared (a.u.)', fontsize = 7)
     for axa in [axes_temperature, axes_ir_raw]:
+        ts = [t for t in range (int (min_time), int (max_time), 60)]
+        axa.set_xticks (ts)
+        axa.set_xticklabels ([datetime.datetime.fromtimestamp (t - ts [0]).strftime ('%M:%S') for t in ts])
         for ata in [axa.xaxis, axa.yaxis]:
             for tick in ata.get_major_ticks ():
                 tick.label.set_fontsize (7)
