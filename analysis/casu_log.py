@@ -19,16 +19,16 @@ AIRFLOW = 'Airflow'
 class CASU_Log:
     
     def __init__ (self, number, base_path = '.'):
-        def convert_row (row):
+        def convert_row (a_row):
             def convert_field (value):
                 try:
                     return int (value)
-                except:
+                except ValueError:
                     try:
                         return float (value)
-                    except:
+                    except ValueError:
                         return value
-            return [convert_field (f) for f in row]
+            return [convert_field (f) for f in a_row]
         #
         self.number = number
         self.infrared_raw = []
@@ -153,7 +153,7 @@ def filename (number, base_path = '.'):
             sys.exit (1)
         return os.path.join (fsf, result)
 
-if __name__ == '__main__':
+def main ():
     parser = argparse.ArgumentParser (
         description = 'Test CASU logs'
         )
@@ -196,3 +196,6 @@ if __name__ == '__main__':
         PELTIER : [axes_list [2]]}
     cl.plot (0, axes_dict, **plot_args)
     figure.savefig ('plot-casu-{:03d}.png'.format (args.number))
+
+if __name__ == '__main__':
+    main ()
