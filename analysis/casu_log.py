@@ -3,6 +3,7 @@ matplotlib.use ('Agg')
 
 import argparse
 import csv
+import matplotlib.patches
 import matplotlib.pyplot
 import os.path
 import re
@@ -57,7 +58,7 @@ class CASU_Log:
         if TEMP in dict_axes:
             self.__plot_sensor_temperature (index, dict_axes [TEMP], **args)
         if PELTIER in dict_axes:
-            self.__plot_actuator_peltier (index, dict_axes [PELTIER], **args)
+            self.__plot_setpoint_peltier (index, dict_axes [PELTIER], **args)
         if AIRFLOW in dict_axes:
             self.__plot_setpoint_airflow (index, dict_axes [AIRFLOW], **args)
 
@@ -113,7 +114,7 @@ class CASU_Log:
                         axa.add_patch (rect)
                 last_time_airflow_on = None
             elif row [1] == 1 and last_time_airflow_on is None:
-                last_time_airflow_on = row [1]
+                last_time_airflow_on = row [0]
             ith += 1
 
     def min_time (self):
