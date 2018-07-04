@@ -66,7 +66,8 @@ def plot_arena (run_number, core_casu_number, leaf_casu_number, base_path):
     axes_dict = {
         casu_log.IR_RAW : [axes_ir_raw],
         casu_log.TEMP : [axes_temperature],
-        casu_log.AIRFLOW : [axes_ir_raw, axes_temperature]
+        casu_log.AIRFLOW : [axes_ir_raw, axes_temperature],
+        casu_log.LED : [axes_ir_raw],
     }
     for index, a_casu_log in enumerate (casu_logs):
         a_casu_log.plot (

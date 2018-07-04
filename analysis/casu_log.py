@@ -15,6 +15,7 @@ IR_RAW = 'ir_raw'
 TEMP = 'temp'
 PELTIER = 'Peltier'
 AIRFLOW = 'Airflow'
+LED = 'DiagnosticLed'
 
 class CASU_Log:
     
@@ -35,11 +36,13 @@ class CASU_Log:
         self.temperature = []
         self.peltier = []
         self.airflow = []
+        self.led = []
         self.__data_dicts = {
             IR_RAW : self.infrared_raw,
             TEMP : self.temperature,
             PELTIER : self.peltier,
-            AIRFLOW : self.airflow
+            AIRFLOW : self.airflow,
+            LED : self.led,
         }
         skipped = {}
         with open (filename (number, base_path)) as fd:
@@ -61,6 +64,8 @@ class CASU_Log:
             self.__plot_setpoint_peltier (index, dict_axes [PELTIER], **args)
         if AIRFLOW in dict_axes:
             self.__plot_setpoint_airflow (index, dict_axes [AIRFLOW], **args)
+        if LED in dict_axes:
+            self.__plot_setpoint_led (index, dict_axes [LED], **args)
 
     def __plot_sensor_infrared_raw (self, index, list_axes, **args):
         if args.get ('ir_raw_avg', True):
@@ -115,6 +120,35 @@ class CASU_Log:
                 last_time_airflow_on = None
             elif row [1] == 1 and last_time_airflow_on is None:
                 last_time_airflow_on = row [0]
+            ith += 1
+
+    def __plot_setpoint_led (self, index, list_axes, **args):
+        def __draw ():
+            for axa in list_axes:
+                ylim = axa.get_ylim ()
+                rect = matplotlib.patches.Rectangle (
+                    xy = [last_time_led_on, ylim [1] - (index + 1) * (ylim [1] - ylim [0]) / 10],
+                    width = row [0] - last_time_led_on,
+                    height = (ylim [1] - ylim [0]) / 10,
+                    color = '#{:02X}{:02X}{:02X}7F'.format (int (255 * last_led_color [0]), int (255 * last_led_color [2]), int (255 * last_led_color [2]))
+                )
+                axa.add_patch (rect)
+        ith = 0
+        last_time_led_on = None
+        last_led_color = None
+        while ith < len (self.led):
+            row = self.led [ith]
+            if row [1] == 1 and last_time_led_on is not None and any ([now != then for now, then in zip (row [2:5], last_led_color)]):
+                __draw ()
+                last_time_led_on = row [0]
+                last_led_color = row [2:5]
+            elif row [1] == 0 or (row [2] == 0 and row [3] == 0 and row [4] == 0):
+                if last_time_led_on is not None:
+                    __draw ()
+                last_time_led_on = None
+            elif row [1] == 1 and last_time_led_on is None:
+                last_time_led_on = row [0]
+                last_led_color = row [2:5]
             ith += 1
 
     def min_time (self):
