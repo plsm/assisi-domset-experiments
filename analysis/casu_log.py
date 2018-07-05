@@ -11,6 +11,8 @@ import sys
 
 import assisipy.casu
 
+import plot_common
+
 IR_RAW = 'ir_raw'
 TEMP = 'temp'
 PELTIER = 'Peltier'
@@ -69,36 +71,58 @@ class CASU_Log:
 
     def __plot_sensor_infrared_raw (self, index, list_axes, **args):
         if args.get ('ir_raw_avg', True):
+            self.__print_info (list_axes, self.infrared_raw, 'infrared raw')
+        if args.get ('ir_raw_avg', True):
             xs = [r [0] for r in self.infrared_raw]
             ys = [sum (r [1:]) / float (len (r) - 1) for r in self.infrared_raw]
-            print ('[I] plotting {} points'.format (ys [:min (len (ys), 10)]))
             for axa in list_axes:
-                axa.plot (xs, ys, '-', label = 'IR{:3d}'.format (self.number))
+                axa.plot (
+                    xs,
+                    ys,
+                    '-',
+                    label = 'IR{:3d}'.format (self.number),
+                    color = plot_common.COLOURS [index]
+                )
 
     def __plot_sensor_temperature (self, index, list_axes, **args):
+        if args.get ('avg_temp', True) or len (args.get ('temp_field', [])) > 0:
+            self.__print_info (list_axes, self.temperature, 'temperature')
         if args.get ('avg_temp', True):
             xs = [r [0] for r in self.temperature]
             ys = [sum (r [1:]) / float (len (r) - 1) for r in self.temperature]
-            print ('[I] plotting {} points'.format (ys [:min (len (ys), 10)]))
             for axa in list_axes:
-                axa.scatter (xs, ys)
+                axa.scatter (
+                    xs,
+                    ys,
+                    c = plot_common.COLOURS [index]
+                )
         for temperature_field in [assisipy.casu.TEMP_F, assisipy.casu.TEMP_L, assisipy.casu.TEMP_B, assisipy.casu.TEMP_R, assisipy.casu.TEMP_TOP, assisipy.casu.TEMP_PCB, assisipy.casu.TEMP_RING, assisipy.casu.TEMP_WAX]:
             if temperature_field in args.get ('temp_field', []):
                 xs = [r [0] for r in self.temperature]
                 ys = [r [1 + assisipy.casu.TEMP_F - temperature_field] for r in self.temperature]
-                print ('[I] plotting {} points'.format (ys [:min (len (ys), 10)]))
                 for axa in list_axes:
-                    axa.scatter (xs, ys)
+                    axa.scatter (
+                        xs,
+                        ys,
+                        c = plot_common.COLOURS [index]
+                    )
                     
     def __plot_setpoint_peltier (self, index, list_axes, **args):
+        self.__print_info (list_axes, self.peltier, 'peltier')
         if args.get ('peltier', True):
             xs = [r [0] for r in self.peltier]
             ys = [r [1] * r [2] for r in self.peltier]
-            print ('[I] plotting {} points'.format (ys [:min (len (ys), 10)]))
             for axa in list_axes:
-                axa.plot (xs, ys, '-', label = 'peltier{:3d}'.format (self.number))
+                axa.plot (
+                    xs,
+                    ys,
+                    '-',
+                    label = 'peltier{:3d}'.format (self.number),
+                    color = plot_common.COLOURS [index]
+                )
 
     def __plot_setpoint_airflow (self, index, list_axes, **args):
+        self.__print_info (list_axes, self.airflow, 'airflow')
         ith = 0
         last_time_airflow_on = None
         while ith < len (self.airflow):
@@ -113,9 +137,6 @@ class CASU_Log:
                             height = ylim [1] - ylim [0],
                             color = '#{:02X}DDFF7F'.format (index)
                         )
-                        print (rect)
-                        print (ylim)
-                        print (last_time_airflow_on)
                         axa.add_patch (rect)
                 last_time_airflow_on = None
             elif row [1] == 1 and last_time_airflow_on is None:
@@ -133,6 +154,7 @@ class CASU_Log:
                     color = '#{:02X}{:02X}{:02X}7F'.format (int (255 * last_led_color [0]), int (255 * last_led_color [2]), int (255 * last_led_color [2]))
                 )
                 axa.add_patch (rect)
+        self.__print_info (list_axes, self.led, "led")
         ith = 0
         last_time_led_on = None
         last_led_color = None
@@ -168,6 +190,10 @@ class CASU_Log:
             ])
             for data in self.__data_dicts.values ()
         ])
+
+    def __print_info (self, list_axes, data, description):
+        if len (list_axes) > 0 and len (data) == 0:
+            print ('[W] No {} in log data to plot for casu {}!'.format (description, self.number))
 
 def filename (number, base_path = '.'):
         filename_pattern = '^[0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{2}-[0-9]{2}-[0-9]{2}-casu-' + '{:03d}'.format (number) + '[.]csv$'
