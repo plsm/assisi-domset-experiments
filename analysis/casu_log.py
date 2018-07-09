@@ -1,5 +1,6 @@
 import matplotlib
-matplotlib.use ('Agg')
+if __name__ == '__main__':
+    matplotlib.use ('Agg')
 
 import argparse
 import csv
