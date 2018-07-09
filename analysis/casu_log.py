@@ -14,12 +14,14 @@ import sys
 import assisipy.casu
 
 import plot_common
+import util.math
 
 IR_RAW = 'ir_raw'
 TEMP = 'temp'
 PELTIER = 'Peltier'
 AIRFLOW = 'Airflow'
 LED = 'DiagnosticLed'
+ACTIVITY = 'activity'
 
 class CASU_Log:
     
@@ -41,6 +43,9 @@ class CASU_Log:
         self.peltier = []
         self.airflow = []
         self.led = []
+        self.activity = None
+        self.hits = None
+        self.moving_average_hits = None
         self.__data_dicts = {
             IR_RAW : self.infrared_raw,
             TEMP : self.temperature,
@@ -74,6 +79,8 @@ class CASU_Log:
             self.__plot_setpoint_airflow (index, dict_axes [AIRFLOW], **args)
         if LED in dict_axes:
             self.__plot_setpoint_led (index, dict_axes [LED], **args)
+        if ACTIVITY in dict_axes:
+            self.__plot_moving_average_hits (index, dict_axes [ACTIVITY])
 
     def __plot_sensor_infrared_raw (self, index, list_axes, **args):
         if args.get ('ir_raw_avg', True):
@@ -179,6 +186,18 @@ class CASU_Log:
                 last_led_color = row [2:5]
             ith += 1
 
+    def __plot_moving_average_hits (self, index, list_axes):
+        xs = self.infrared_raw [:, 0]
+        ys = self.moving_average_hits [:]
+        for axa in list_axes:
+            axa.plot (
+                xs,
+                ys,
+                '-',
+                label = 'mah{:3d}'.format (self.number),
+                color = plot_common.COLOURS [index]
+            )
+
     def min_time (self):
         return min ([
             min ([
@@ -196,6 +215,22 @@ class CASU_Log:
             ])
             for data in self.__data_dicts.values ()
         ])
+
+    def compute_activity (self, start_index, end_index, offset, moving_average_length):
+        """
+        Compute the infrared sensor activity.  This assumes that during the period start_time to end_time there are no bees.
+        :param offset:
+        :param moving_average_length:
+        :param start_index:
+        :param end_index:
+        :return:
+        """
+        thresholds = self.infrared_raw [start_index:end_index, 1:].max (axis = 0)
+        thresholds = thresholds + offset
+        number_sensors = self.infrared_raw.shape [1] - 1
+        self.activity =  self.infrared_raw [:, 1:] > thresholds
+        self.hits = self.activity.sum (axis = 1)
+        self.moving_average_hits = util.math.moving_average (self.hits, moving_average_length) / float (number_sensors)
 
     def __print_info (self, list_axes, data, description):
         if len (list_axes) > 0 and len (data) == 0:
@@ -262,6 +297,7 @@ def main ():
         PELTIER : [axes_list [2]]}
     cl.plot (0, axes_dict, **plot_args)
     figure.savefig ('plot-casu-{:03d}.png'.format (args.number))
+    cl.compute_activity (0, 50, 500)
 
 if __name__ == '__main__':
     main ()
