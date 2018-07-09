@@ -6,6 +6,7 @@ import argparse
 import csv
 import matplotlib.patches
 import matplotlib.pyplot
+import numpy
 import os.path
 import re
 import sys
@@ -33,7 +34,7 @@ class CASU_Log:
                     except ValueError:
                         return value
             return [convert_field (f) for f in a_row]
-        #
+        # initialise fields
         self.number = number
         self.infrared_raw = []
         self.temperature = []
@@ -47,6 +48,7 @@ class CASU_Log:
             AIRFLOW : self.airflow,
             LED : self.led,
         }
+        # read CASU log
         skipped = {}
         with open (filename (number, base_path)) as fd:
             reader = csv.reader (fd, delimiter = ';', quoting = csv.QUOTE_NONE)
@@ -57,6 +59,9 @@ class CASU_Log:
                     skipped [row [0]] = True
         if len (skipped.keys ()) > 0:
             print ('[I] skipped data {}'.format (skipped.keys ()))
+        # convert to numpy arrays
+        self.infrared_raw = numpy.array (self.infrared_raw)
+        self.__data_dicts [IR_RAW] = self.infrared_raw
 
     def plot (self, index, dict_axes, **args):
         if IR_RAW in dict_axes:
@@ -74,8 +79,8 @@ class CASU_Log:
         if args.get ('ir_raw_avg', True):
             self.__print_info (list_axes, self.infrared_raw, 'infrared raw')
         if args.get ('ir_raw_avg', True):
-            xs = [r [0] for r in self.infrared_raw]
-            ys = [sum (r [1:]) / float (len (r) - 1) for r in self.infrared_raw]
+            xs = self.infrared_raw [:,0]
+            ys = self.infrared_raw [:,1:].mean (axis = 1)
             for axa in list_axes:
                 axa.plot (
                     xs,
