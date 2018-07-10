@@ -135,6 +135,7 @@ class DomsetController(Thread):
 
         self.ir_thresholds = [max(buff)+margin for buff in ir_raw_buffers]
         print(self.casu.name(), self.ir_thresholds)
+        self.logger.writerow (['IRT', time.time ()] + self.ir_thresholds)
 
         self.casu.diagnostic_led_standby()
 
