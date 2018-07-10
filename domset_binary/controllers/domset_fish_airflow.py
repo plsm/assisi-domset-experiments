@@ -253,16 +253,27 @@ class DomsetController(Thread):
     def communicate(self):
 
         if self._is_master:
-            #self.casu.send_message("cats", json.dumps(self.maximum_activity))
-            #self.casu.send_message("cats", json.dumps([self.maximum_activity,self.average_activity,self.minimum_activity,self.temp_ref] ))
-            self.casu.send_message("cats", json.dumps({
-            'max' : self.maximum_activity,
-            'avg' : self.average_activity,
-            'min' : self.minimum_activity,
-            'tref':self.temp_ref,
-            'thres_max' : self.thres_cool,
-            'thres_avg' : self.thres_heat,
-            'thres_min' : self.thres_blow}))
+            # construct payload, with max precision 3dp
+            pl = json.dumps({
+                'max':"{:.3f}".format(self.maximum_activity),
+                'avg':"{:.3f}".format(self.average_activity),
+                'min':"{:.3f}".format(self.minimum_activity),
+                'tref':"{:.3f}".format(self.temp_ref),
+                'thres_max' : "{:.3f}".format(self.thres_cool),
+                'thres_avg' : "{:.3f}".format(self.thres_heat),
+                'thres_min' : "{:.3f}".format(self.thres_blow),
+            })
+            self.casu.send_message("cats", pl)
+            #print("[I]{}: emitted to ISI, payload:\n\t{}".format(self.casu_id, pl))
+
+            #self.casu.send_message("cats", json.dumps({
+            #'max' : self.maximum_activity,
+            #'avg' : self.average_activity,
+            #'min' : self.minimum_activity,
+            #'tref':self.temp_ref,
+            #'thres_max' : self.thres_cool,
+            #'thres_avg' : self.thres_heat,
+            #'thres_min' : self.thres_blow}))
 
     def respond_to_fish(self):
         if self.fish_info:
