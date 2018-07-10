@@ -59,9 +59,11 @@ class DomsetController(Thread):
         Ttemp = 5.0 # discretisation period
         self._temp_control_freq = 1.0 / Ttemp # Sample frequency for temperature control in seconds is once in 5 seconds
         self.time_start = time.time()
-        self._time_length = 1500.0 #1500.0
-        self._time_length_cool = self._time_length * 0.5
-        self._time_length_heat = self._time_length * 0.3333
+        self.time_start_cool = time.time()
+        self.time_start_heat = time.time()
+        self._time_length = 1800.0 #1500.0 - longer experiment run for the fish influence
+        self._time_length_cool = 750.0
+        self._time_length_heat = 500.0
         self.t_prev = time.time()
         self.stop_flag = Event()
         self.temp_ref = 28.0
@@ -107,6 +109,14 @@ class DomsetController(Thread):
         self._blow_start_condition = 12 # n x Td seconds minimum activity below threshold before we start blowing
         self._default_blow_duration = 60.0
 
+        #fish communication
+        self.thres_cool = self._start_cool
+        self.thres_blow = self._start_heat
+        self.thres_blow = 0.0
+
+        self.reset_temp = 0.0
+        self.delta_temp_ref = 0.0
+        self.reset_threshold = 0.0
 
         # Set up zeta logging
         now_str = datetime.now().__str__().split('.')[0]
@@ -184,13 +194,21 @@ class DomsetController(Thread):
                         #else:
                             #self.nbg_data_buffer[nbg_id].pop(0)
             # calculate cumulative sensor activity of a group --> temperature control
+            if (self.reset_threshold == 1.0):
+                self.time_start_cool = time.time()
+                self.time_start_heat = time.time()
+                self.reset_threshold = 0.0
             self.calculate_sensor_activity()
             self.calculate_temp_ref()
-            #self.calculate_blow_ref()
+            if (self.reset_temp == 1.0):
+                self.temp_ref = 28.0
+                self.reset_temp = 0.0
             if (self.group_size > 1):
                 for nbg in self.casu._Casu__neighbors:
                     if not ("cats" in nbg):
-                        success = self.casu.send_message(nbg,json.dumps({'t_ref':self.temp_ref, 'blow':self.blow}))
+                        success = self.casu.send_message(nbg,json.dumps({
+                        't_ref':self.temp_ref,
+                        'blow':self.blow}))
 
         else:
             # send self ir readings to group master
@@ -227,21 +245,44 @@ class DomsetController(Thread):
         if not (self.temp_ref_old == self.temp_ref):
             self.casu.set_temp(self.temp_ref)
 
+
     def communicate(self):
 
         if self._is_master:
             #self.casu.send_message("cats", json.dumps(self.maximum_activity))
             #self.casu.send_message("cats", json.dumps([self.maximum_activity,self.average_activity,self.minimum_activity,self.temp_ref] ))
-            self.casu.send_message("cats", json.dumps({'max':self.maximum_activity,
-            'avg':self.average_activity, 'min':self.minimum_activity, 'tref':self.temp_ref} ))
+            self.casu.send_message("cats", json.dumps({
+            'max' : self.maximum_activity,
+            'avg' : self.average_activity,
+            'min' : self.minimum_activity,
+            'tref':self.temp_ref,
+            'thres_max' : self.thres_cool,
+            'thres_avg' : self.thres_heat,
+            'thres_min' : self.thres_min}))
 
     def respond_to_fish(self):
         if self.fish_info:
             msg = self.fish_info.pop()
-            decompose = msg.split("Duration:")
+            decompose = msg.split("blow:")
             decompose = decompose[1].split(';')
             duration = float(decompose[0])
             self.blow = duration
+
+            decompose = msg.split("reset_temp:")
+            decompose = decompose[1].split(;)
+            self.reset_temp = float(decompose[0])
+
+            decompose = msg.split("delta_temp_ref:")
+            decompose = decompose[1].split(;)
+            self.delta_temp_ref = float(decompose[0])
+
+            decompose = msg.split("reset_threshold:")
+            decompose = decompose[1].split(;)
+            self.reset_threshold = float(decompose[0])
+
+
+
+
             # here i should set the self.blow to received blow duration
             #print("CASU-" + str(self.casu_id) + ": " + msg)
         else:
@@ -272,6 +313,8 @@ class DomsetController(Thread):
     def run(self):
         # Just call update every Td
         self.time_start = time.time()
+        self.time_start_cool = time.time()
+        self.time_start_heat = time.time()
         self.i = 0
         self.time_index = 1
         while (time.time() - self.time_start < self._time_length) and not (self.stop_flag.wait(self._Td)):
@@ -366,8 +409,8 @@ class DomsetController(Thread):
             self.initial_heating = 0
 
         i_n = (self.t_prev - self.time_start) / self._time_length;
-        i_n_cool = ((self.t_prev - self.time_start) / self._time_length_cool)
-        i_n_heat = ((self.t_prev - self.time_start) / self._time_length_heat)
+        i_n_cool = ((self.t_prev - self.time_start_cool) / self._time_length_cool)
+        i_n_heat = ((self.t_prev - self.time_start_heat) / self._time_length_heat)
         if i_n_cool >= 1:
             i_n_cool = 0.99
         if i_n_heat >= 1:
@@ -419,6 +462,15 @@ class DomsetController(Thread):
             self.temp_ref = 26
         #if not (self.temp_ref_old == self.temp_ref):
             #print('new temperature reference ')
+
+        # save thresholds for fish side
+        self.thres_cool = scaling_cool
+        self.thres_heat = scaling_heat
+        if (time_now - self.time_start > self._blow_allowed_start) and (time_now - self.time_start < self._blow_allowed_stop):
+            self.thres_blow = self._scaling_blow
+        else:
+            self.thres_blow = 0.0
+
 
     def calculate_blow_ref(self):
         time_now = time.time()
