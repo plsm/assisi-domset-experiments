@@ -42,7 +42,7 @@ class CASU_Log:
         self.temperature = []
         self.peltier = []
         self.airflow = []
-        self.led = []
+        _led = []
         self.activity = None
         self.hits = None
         self.moving_average_hits = None
@@ -51,7 +51,7 @@ class CASU_Log:
             TEMP : self.temperature,
             PELTIER : self.peltier,
             AIRFLOW : self.airflow,
-            LED : self.led,
+            LED : _led,
         }
         # read CASU log
         skipped = {}
@@ -66,7 +66,9 @@ class CASU_Log:
             print ('[I] skipped data {}'.format (skipped.keys ()))
         # convert to numpy arrays
         self.infrared_raw = numpy.array (self.infrared_raw)
+        self.led = numpy.array (_led)
         self.__data_dicts [IR_RAW] = self.infrared_raw
+        self.__data_dicts [LED] = _led
 
     def plot (self, index, dict_axes, **args):
         if IR_RAW in dict_axes:
@@ -172,7 +174,7 @@ class CASU_Log:
         last_time_led_on = None
         last_led_color = None
         while ith < len (self.led):
-            row = self.led [ith]
+            row = self.led [ith,:]
             if row [1] == 1 and last_time_led_on is not None and any ([now != then for now, then in zip (row [2:5], last_led_color)]):
                 __draw ()
                 last_time_led_on = row [0]
