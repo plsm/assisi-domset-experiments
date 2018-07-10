@@ -17,7 +17,9 @@ class DomsetController(Thread):
     def __init__(self, rtc_file, log=False):
 
         Thread.__init__(self)
+        self.stop = False
 
+        self.turn_off_LED = False
         self.casu = casu.Casu(rtc_file,log=True)
         # Parse rtc file name to get CASU id
         # assumes casu-xxx.rtc file name format
@@ -162,8 +164,6 @@ class DomsetController(Thread):
 
         #t_old = self.t_prev
         self.t_prev = time.time()
-        #casu_id = self.casu_id
-
         # calculate local ir sensor activity over time
         self.calculate_self_average_activity()
         if (self.group_size == 1):
@@ -300,6 +300,9 @@ class DomsetController(Thread):
 
             # here i should set the self.blow to received blow duration
             #print("CASU-" + str(self.casu_id) + ": " + msg)
+            print("CASU-" + str(self.casu_id) + ": " + msg)
+            self.casu.set_diagnostic_led_rgb (r = 1, b = 0, g = 1)
+            self.turn_off_LED = True
         else:
             pass
 
@@ -332,7 +335,7 @@ class DomsetController(Thread):
         self.time_start_heat = time.time()
         self.i = 0
         self.time_index = 1
-        while (time.time() - self.time_start < self._time_length) and not (self.stop_flag.wait(self._Td)):
+        while (time.time() - self.time_start < self._time_length) and not (self.stop_flag.wait(self._Td)) and not self.stop:
             if (time.time() - self.time_start > self.time_index * 100) and (time.time() - self.time_start < self.time_index * 100 + 1):
                 print("[casu-{:03}] {}s elapsed".format(self.casu_id, self.time_index * 100))
                 self.time_index += 1
@@ -341,6 +344,8 @@ class DomsetController(Thread):
             if (self.i >= 1 / (self._Td * float(self._temp_control_freq))):
                 #print(str(self.casu_id) + ' ' + str(self.t_prev - self.time_start))
                 self.update()
+                if self.turn_off_LED:
+                    self.casu.set_diagnostic_led_rgb (0,0,0)
                 self.airflow_control()
                 self.respond_to_fish()
                 self.communicate()
