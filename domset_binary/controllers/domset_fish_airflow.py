@@ -143,6 +143,7 @@ class DomsetController(Thread):
 
         self.ir_thresholds = [max(buff)+margin for buff in ir_raw_buffers]
         print(self.casu.name(), self.ir_thresholds)
+        self.logger.writerow (['IRT', time.time ()] + self.ir_thresholds)
 
         self.casu.diagnostic_led_standby()
 
@@ -247,8 +248,8 @@ class DomsetController(Thread):
 
         # Set temperature reference
         if not (self.temp_ref_old == self.temp_ref):
+            self.logger.writerow (["CT", time.time (), self.temp_ref])
             self.casu.set_temp(self.temp_ref)
-
 
     def communicate(self):
 
@@ -310,12 +311,14 @@ class DomsetController(Thread):
         if self.blow > 0.0:
             if (self.blow_prev == 0.0):
                 self.start_blow = time.time()
+                self.logger.writerow (["CAF", time.time (), 1])
                 self.casu.set_airflow_intensity(1)
                 if (self.casu_id == 20):
                     print("Actually starts blowing")
             else:
                 time_now = time.time()
                 if (time_now - self.start_blow) > self.blow:
+                    self.logger.writerow (["CAF", time.time (), 0])
                     self.casu.airflow_standby()
                     self.blow = 0.0
                     self.integrate_minimum_activity = 0
@@ -323,6 +326,7 @@ class DomsetController(Thread):
                         print("Stop blowing, timeout!")
         else:
             if not (self.blow_prev == 0.0):
+                self.logger.writerow (["CAF", time.time (), 0])
                 self.casu.airflow_standby()
                 self.integrate_minimum_activity = 0
         self.blow_prev = self.blow
@@ -351,6 +355,7 @@ class DomsetController(Thread):
                 self.communicate()
                 self.i = 0
         self.casu.airflow_standby()
+        self.logfile.close ()
         print("Done")
 
     def update_activeSensors_estimate(self):
@@ -365,6 +370,7 @@ class DomsetController(Thread):
             self.activeSensors.append(-1)
         if len(self.activeSensors) > self._sensors_buf_len:
             self.activeSensors.pop(0)
+        self.logger.writerow (["CAS", time.time ()] + activeSensors_current)
 
     def calculate_self_average_activity(self):
         activeSensors = [x for x in self.activeSensors if x >= 0]
@@ -381,6 +387,7 @@ class DomsetController(Thread):
             self.average_activity = -1
             self.maximum_activity = 0
             self.minimum_activity = 1
+        self.logger.writerow (["CAC", time.time (), self.average_activity])
 
     def calculate_sensor_activity(self):
         group_functional = self.group_size
@@ -416,6 +423,7 @@ class DomsetController(Thread):
         #print('average ' + str(self.average_activity))
         #print(self.maximum_activity)
         #print('integrate ' + str(self.integrate_activity))
+        self.logger.writerow (["NAC", time.time (), self.average_activity])
 
     def calculate_temp_ref(self):
         """
@@ -482,6 +490,7 @@ class DomsetController(Thread):
             self.temp_ref = 26
         #if not (self.temp_ref_old == self.temp_ref):
             #print('new temperature reference ')
+        self.logger.writerow (["NT", time.time (), self.temp_ref])
 
         # save thresholds for fish side
         self.thres_cool = scaling_cool
