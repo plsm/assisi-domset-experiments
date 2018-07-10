@@ -7,7 +7,7 @@ import sys
 import time
 from threading import Thread, Event
 from datetime import datetime
-from copy import deepcopy
+#from copy import deepcopy
 import json
 import csv
 from math import exp
@@ -131,7 +131,7 @@ class DomsetController(Thread):
         self.casu.set_diagnostic_led_rgb(r=1)
 
         t_start = time.time()
-        count = 0
+        # count = 0
         ir_raw_buffers = [[0],[0],[0],[0],[0],[0]]
         while time.time() - t_start < duration:
             ir_raw = self.casu.get_ir_raw_value(casu.ARRAY)
@@ -160,9 +160,9 @@ class DomsetController(Thread):
 
     def update(self):
 
-        t_old = self.t_prev
+        #t_old = self.t_prev
         self.t_prev = time.time()
-        casu_id = self.casu_id
+        #casu_id = self.casu_id
 
         # calculate local ir sensor activity over time
         self.calculate_self_average_activity()
@@ -171,6 +171,7 @@ class DomsetController(Thread):
             if msg:
                 if 'iface' in msg['sender']:
                     self.fish_info.append(msg['data'])
+                    print("[I] casu-{:03d} rx from iface".format(self.casu_id), msg['data'])
         if self._is_master:
             if (self.group_size > 1):
                 # receive group ir readings
@@ -180,6 +181,7 @@ class DomsetController(Thread):
                     if msg:
                         if 'iface' in msg['sender']:
                             self.fish_info.append(msg['data'])
+                            print("[I] casu-{:03d} rx from iface".format(self.casu_id), msg['data'])
                             #print("CASU " + str(self.casu_id) + " got DATA: " + msg['data'])
                         else:
                             nbg_id = int(msg['sender'][-3:])
@@ -209,6 +211,8 @@ class DomsetController(Thread):
                         success = self.casu.send_message(nbg,json.dumps({
                         't_ref':self.temp_ref,
                         'blow':self.blow}))
+                        if 0: print success
+
 
         else:
             # send self ir readings to group master
@@ -258,7 +262,7 @@ class DomsetController(Thread):
             'tref':self.temp_ref,
             'thres_max' : self.thres_cool,
             'thres_avg' : self.thres_heat,
-            'thres_min' : self.thres_min}))
+            'thres_min' : self.thres_blow}))
 
     def respond_to_fish(self):
         if self.fish_info:
@@ -269,15 +273,15 @@ class DomsetController(Thread):
             self.blow = duration
 
             decompose = msg.split("reset_temp:")
-            decompose = decompose[1].split(;)
+            decompose = decompose[1].split(';')
             self.reset_temp = float(decompose[0])
 
             decompose = msg.split("delta_temp_ref:")
-            decompose = decompose[1].split(;)
+            decompose = decompose[1].split(';')
             self.delta_temp_ref = float(decompose[0])
 
             decompose = msg.split("reset_threshold:")
-            decompose = decompose[1].split(;)
+            decompose = decompose[1].split(';')
             self.reset_threshold = float(decompose[0])
 
 
@@ -319,7 +323,7 @@ class DomsetController(Thread):
         self.time_index = 1
         while (time.time() - self.time_start < self._time_length) and not (self.stop_flag.wait(self._Td)):
             if (time.time() - self.time_start > self.time_index * 100) and (time.time() - self.time_start < self.time_index * 100 + 1):
-                print(self.time_index * 100)
+                print("[casu-{:03}] {}s elapsed".format(self.casu_id, self.time_index * 100))
                 self.time_index += 1
             self.update_activeSensors_estimate()
             self.i += 1
@@ -408,7 +412,7 @@ class DomsetController(Thread):
         if (self.integrate_activity < self._integrate_limit_lower) or (self.integrate_activity > self._integrate_limit_upper) or (self.temp_ctrl >= self._stop_initial_heating) :
             self.initial_heating = 0
 
-        i_n = (self.t_prev - self.time_start) / self._time_length;
+        #i_n = (self.t_prev - self.time_start) / self._time_length;
         i_n_cool = ((self.t_prev - self.time_start_cool) / self._time_length_cool)
         i_n_heat = ((self.t_prev - self.time_start_heat) / self._time_length_heat)
         if i_n_cool >= 1:
@@ -466,6 +470,7 @@ class DomsetController(Thread):
         # save thresholds for fish side
         self.thres_cool = scaling_cool
         self.thres_heat = scaling_heat
+        time_now = time.time()
         if (time_now - self.time_start > self._blow_allowed_start) and (time_now - self.time_start < self._blow_allowed_stop):
             self.thres_blow = self._scaling_blow
         else:
