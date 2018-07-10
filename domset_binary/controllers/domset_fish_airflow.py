@@ -501,6 +501,9 @@ class DomsetController(Thread):
         else:
             self.thres_blow = 0.0
 
+        self.logger.writerow (["TH_HEAT", time.time (), self.thres_heat])
+        self.logger.writerow (["TH_COOL", time.time (), self.thres_cool])
+        self.logger.writerow (["TH_MIN",  time.time (), self.thres_blow])
 
     def calculate_blow_ref(self):
         time_now = time.time()
