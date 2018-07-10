@@ -109,7 +109,6 @@ def temperature_profile_core (casu, initial_temperature, first_period_length, ra
     casu.airflow_standby ()
     # third period
     flash_led (casu)
-    start = time.time ()
     time.sleep (third_period_length)
 
 
