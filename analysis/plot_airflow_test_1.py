@@ -7,6 +7,7 @@ import argparse
 import csv
 import datetime
 import matplotlib.pyplot
+import numpy
 import os.path
 import yaml
 
@@ -17,17 +18,44 @@ import util.math
 
 def main ():
     args = process_arguments ()
-    with open (args.config) as fd:
-        config = yaml.safe_load (fd)
     filename = 'bee-where-about_L={}_D={}.csv'.format (args.sampling_length, args.sampling_delta)
-    fdw = open (filename, 'w')
-    bee_where_about_writer = csv.writer (fdw, delimiter=';', quoting = csv.QUOTE_NONNUMERIC)
-    for an_arena in config ['arenas']:
-        process_arena (args.run, an_arena ['core'], an_arena ['leaf'], args.base_path, args.moving_average_length,
-                       config ['parameters']['first_period_length'], config ['parameters']['third_period_length'],
-                       args.sampling_length, args.sampling_delta,
-                       bee_where_about_writer)
-    fdw.close ()
+    if not args.update_bee_where_abouts_plot:
+        fdw = open (filename, 'w')
+        bee_where_about_writer = csv.writer (fdw, delimiter = ';', quoting = csv.QUOTE_NONNUMERIC)
+        for run_number in args.run:
+            process_run (
+                run_number = run_number,
+                base_path = os.path.join (args.base_path, args.run_folder_template.format (run_number)),
+                config_filename = args.config,
+                bee_where_about_writer = bee_where_about_writer,
+                moving_average_length = args.moving_average_length,
+                sampling_length = args.sampling_length,
+                sampling_delta = args.sampling_delta,
+            )
+        fdw.close ()
+    plot_bee_where_abouts (
+        filename,
+        sampling_length = args.sampling_length,
+        sampling_delta = args.sampling_delta,
+    )
+
+def process_run (run_number, base_path, config_filename, bee_where_about_writer, moving_average_length, sampling_length, sampling_delta):
+    fn = os.path.join (base_path, config_filename)
+    with open (fn) as fd:
+        config_data = yaml.safe_load (fd)
+    for an_arena in config_data ['arenas']:
+        process_arena (
+            run_number = run_number,
+            core_casu_number = an_arena ['core'],
+            leaf_casu_number = an_arena ['leaf'],
+            base_path = base_path,
+            moving_average_length = moving_average_length,
+            first_period_length = config_data ['parameters'] ['first_period_length'],
+            third_period_length = config_data ['parameters'] ['third_period_length'],
+            sampling_length = sampling_length,
+            sampling_delta = sampling_delta,
+            bee_where_about_writer = bee_where_about_writer
+        )
 
 def process_arena (run_number, core_casu_number, leaf_casu_number, base_path, moving_average_length, first_period_length, third_period_length, sampling_length, sampling_delta, bee_where_about_writer):
     # read logs
@@ -105,6 +133,36 @@ def plot_arena (run_number, core_casu_number, leaf_casu_number, casu_logs):
     figure.savefig ('casu-log_R{}-C{}-L{}.png'.format (run_number, core_casu_number, leaf_casu_number))
     matplotlib.pyplot.close (figure)
 
+def plot_bee_where_abouts (filename, sampling_length, sampling_delta):
+    with open (filename, 'r') as fd:
+        reader = csv.reader (fd, delimiter = ';', quoting = csv.QUOTE_NONNUMERIC)
+        data = numpy.array ([row for row in reader])
+    print (data)
+    figure_width, figure_height = 8, 4
+    figure = matplotlib.pyplot.figure (figsize = (figure_width, figure_height))
+    axes = figure.subplots (
+        nrows = 1,
+        ncols = 2,
+        gridspec_kw = {
+            'width_ratios' : [2, 1],
+            'wspace' : 0.5
+        }
+    )
+    axes [0].boxplot (
+        data [:, 3:7],
+        labels = ['core\n1st period', 'leaf\n1st period', 'core\n3rd period', 'leaf\n3rd period']
+    )
+    axes [0].set_ylim (-0.03, 1.03)
+    axes [0].set_ylabel ('absolute\nsensor activity (a.u.)')
+    axes [1].boxplot (
+        data [:, 7:9],
+        labels = ['gain\n1st period', 'gain\n3rd period']
+    )
+    axes [1].set_ylim (-1.03, 1.03)
+    axes [1].set_ylabel ('leaf-core\nsensor activity (a.u.)')
+    figure.suptitle ('Sensor activity\nlast {}s of first and third period'.format (sampling_length))
+    figure.savefig ('bee-where-about_L={}_D={}.png'.format (sampling_length, sampling_delta))
+
 def compute_bee_where_about (run_number, casu_logs, core_casu_log, first_period_length, third_period_length, sampling_length, sampling_delta, writer):
     """
     Compute where the majority of bees are based on sensor activity
@@ -113,11 +171,13 @@ def compute_bee_where_about (run_number, casu_logs, core_casu_log, first_period_
     :type casu_logs: list(casu_log.CASU_Log)
     """
     def search_led_on (ith):
-        found = False
-        while not found:
-            found = core_casu_log.led [ith][1] == 1
+        while True:
+            if core_casu_log.led [ith, 1] == 1:
+                timestamp = core_casu_log.led [ith, 0]
+                while core_casu_log.led [ith, 1] == 1:
+                    ith += 1
+                return timestamp, ith
             ith += 1
-        return core_casu_log.led [ith - 1][0], ith
     index = 0
     first_period_start_time, index = search_led_on (index)
     _second_period_start_time, index = search_led_on (index)
@@ -128,6 +188,16 @@ def compute_bee_where_about (run_number, casu_logs, core_casu_log, first_period_
         sums_activity [a_start_time] = {}
         for index, a_casu_log in enumerate (casu_logs):
             indexes = [util.math.find_nearest_index (a_casu_log.infrared_raw [:,0], a_time) for a_time in sampling_times]
+            print ('[I] Computing for run {} casus {} and {} bee where about between relative timestamps {:.2f}% and {:.2f}% or indexes {} and {}'.format (
+                run_number,
+                casu_logs [0].number,
+                casu_logs [1].number,
+                100 * (min (sampling_times) - a_casu_log.infrared_raw [:,0].min ()) / (a_casu_log.infrared_raw [:,0].max () - a_casu_log.infrared_raw [:,0].min ()),
+                100 * (max (sampling_times) - a_casu_log.infrared_raw [:, 0].min ()) / (
+                            a_casu_log.infrared_raw [:, 0].max () - a_casu_log.infrared_raw [:, 0].min ()),
+                min (indexes),
+                max (indexes)
+            ))
             data = [a_casu_log.moving_average_hits [ith] for ith in indexes]
             sums_activity [a_start_time][index] = sum (data) / len (data)
     row = [run_number]
@@ -136,8 +206,11 @@ def compute_bee_where_about (run_number, casu_logs, core_casu_log, first_period_
         sums_activity [at][ai]
         for at in sums_activity.keys ()
         for ai in sums_activity [at].keys ()])
+    row.extend ([
+        sums_activity [at][1] - sums_activity [at][0]
+        for at in sums_activity.keys ()
+    ])
     writer.writerow (row)
-
 
 def process_arguments ():
     parser = argparse.ArgumentParser (
@@ -160,9 +233,17 @@ def process_arguments ():
     parser.add_argument (
         '--run', '-r',
         metavar = 'N',
+        action = 'append',
         type = int,
         required = True,
         help = 'run number'
+    )
+    parser.add_argument (
+        '--run-folder-template',
+        metavar = 'STRING',
+        type = str,
+        default = 'run-{}',
+        help = 'Template of the run folder.  This is joined to the base path.'
     )
     parser.add_argument (
         '--moving-average-length',
@@ -184,6 +265,11 @@ def process_arguments ():
         type = int,
         default = 1,
         help = 'Sampling delta used when computing bee where abouts in first and third period'
+    )
+    parser.add_argument (
+        '--update-bee-where-abouts-plot',
+        action = 'store_true',
+        help = 'only update the bee where abouts plot'
     )
     return parser.parse_args ()
 
