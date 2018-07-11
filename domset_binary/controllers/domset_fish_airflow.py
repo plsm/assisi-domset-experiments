@@ -529,6 +529,7 @@ IR_CALIBRATION = 4
 OK = 1001
 
 def main (rtc_file_name, casu_number, worker_address):
+    import video_sync
     import zmq_sock_utils
     print ('[I] Main function for CASU {}'.format (casu_number))
     # open ZMQ server socket
@@ -553,6 +554,7 @@ def main (rtc_file_name, casu_number, worker_address):
             zmq_sock_utils.send (socket, [OK])
         elif message [0] == START:
             print ('[I] Start message for CASU {}'.format (casu_number))
+            video_sync.flash_casu (ctrl.casu)
             ctrl.start ()
             zmq_sock_utils.send (socket, [OK])
         elif message [0] == TERMINATE:

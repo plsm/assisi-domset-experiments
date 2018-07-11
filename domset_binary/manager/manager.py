@@ -16,6 +16,7 @@ import worker_settings
 import worker_stub
 import domset_binary.controllers.domset_fish_airflow
 import domset_binary.util.zmq_sock_utils
+import domset_binary.util.video_sync
 
 TEST_DURATION = 5 # duration of a test run in minutes
 
@@ -69,6 +70,7 @@ def deploy (lwsg, g):
         lwsg,
         check_file (domset_binary.controllers.domset_fish_airflow.__file__),
         [
+            check_file (domset_binary.util.video_sync),
             check_file (domset_binary.util.zmq_sock_utils.__file__)
         ],
         g)
@@ -77,7 +79,7 @@ def main_operations (args, cfg, lwsg):
     if args.test_run:
         experiment_duration = TEST_DURATION
     else:
-        experiment_duration = cfg ['experiment_duration']
+        experiment_duration = cfg ['experiment_duration'] + domset_binary.util.video_sync.LENGTH
     dws = worker_stub.connect_workers (lwsg)
     if args.run_folder is not None:
         check_experiment_folder (args.run_folder)
