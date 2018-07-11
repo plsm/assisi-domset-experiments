@@ -14,6 +14,7 @@ import graph
 import util
 import worker_settings
 import worker_stub
+import domset_binary.controllers.domset_fish_airflow
 import domset_binary.util.zmq_sock_utils
 
 TEST_DURATION = 5 # duration of a test run in minutes
@@ -54,13 +55,21 @@ def check_video (cfg):
         print ('Terminate processes')
     print ('Done checking video cropping')
 
+def check_file (filename):
+    if filename [-2:] == 'py':
+        return filename
+    elif filename [-3:] == 'pyc':
+        return filename [:-1]
+    else:
+        print ('Don t know what to do with {}'.format (filename))
+        return None
+
 def deploy (lwsg, g):
     worker_settings.deploy_and_run_workers (
         lwsg,
-        os.path.join (os.path.dirname (os.path.abspath (__file__)), 'worker.py'),
+        check_file (domset_binary.controllers.domset_fish_airflow.__file__),
         [
-            os.path.join (os.path.dirname (os.path.dirname (os.path.abspath (__file__))), 'controllers/domset_interspecies.py'),
-            domset_binary.util.zmq_sock_utils.__file__
+            check_file (domset_binary.util.zmq_sock_utils.__file__)
         ],
         g)
 
