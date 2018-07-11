@@ -70,7 +70,7 @@ def deploy (lwsg, g):
         lwsg,
         check_file (domset_binary.controllers.domset_fish_airflow.__file__),
         [
-            check_file (domset_binary.util.video_sync),
+            check_file (domset_binary.util.video_sync.__file__),
             check_file (domset_binary.util.zmq_sock_utils.__file__)
         ],
         g)
@@ -114,7 +114,7 @@ def main_operations (args, cfg, lwsg):
         cfg ['video']['crop_right'],
         cfg ['video']['crop_top'],
         cfg ['video']['crop_bottom'])
-    time.sleep (10)
+    reply_start_command_from_workers (dws)
     try:
         process_recording.wait ()
     except KeyboardInterrupt:
@@ -275,7 +275,7 @@ def run_ISI (config, path, run_folder, debug = False):
         '-bg', 'rgb:0/0/1F',
         '-title', 'ISI',
         '-e',
-        'python /home/assisi/assisi/inter-domset/inter_domset/ISI/ISI.py --pth {} --proj_conf {} --logpath {}'.format (path, config, ISI_log_folder)
+        'python /home/assisi/assisi/inter-domset/inter_domset/ISI/ISI.py --pth {} --proj_conf {} --logpath {} ; echo Press ENTER to finish ; read DUMMY'.format (path, config, ISI_log_folder)
     ]
     if debug:
         print ('Full ISI command is:')
@@ -307,6 +307,8 @@ def send_start_command_to_workers (dict_worker_stubs):
     """
     for ws in dict_worker_stubs.values ():
         ws.start_domset_send ()
+
+def reply_start_command_from_workers (dict_worker_stubs):
     for ws in dict_worker_stubs.values ():
         ws.start_domset_recv ()
 
