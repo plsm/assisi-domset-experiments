@@ -138,13 +138,13 @@ def plot_bee_where_abouts (filename, sampling_length, sampling_delta):
         reader = csv.reader (fd, delimiter = ';', quoting = csv.QUOTE_NONNUMERIC)
         data = numpy.array ([row for row in reader])
     print (data)
-    figure_width, figure_height = 8, 4
+    figure_width, figure_height = 10, 4
     figure = matplotlib.pyplot.figure (figsize = (figure_width, figure_height))
     axes = figure.subplots (
         nrows = 1,
-        ncols = 2,
+        ncols = 3,
         gridspec_kw = {
-            'width_ratios' : [2, 1],
+            'width_ratios' : [2, 1, 2],
             'wspace' : 0.5
         }
     )
@@ -154,12 +154,20 @@ def plot_bee_where_abouts (filename, sampling_length, sampling_delta):
     )
     axes [0].set_ylim (-0.03, 1.03)
     axes [0].set_ylabel ('absolute\nsensor activity (a.u.)')
-    axes [1].boxplot (
+    axes [1].violinplot (
         data [:, 7:9],
-        labels = ['gain\n1st period', 'gain\n3rd period']
+    #    labels = ['gain\n1st period', 'gain\n3rd period']
     )
     axes [1].set_ylim (-1.03, 1.03)
     axes [1].set_ylabel ('leaf-core\nsensor activity (a.u.)')
+    axes [2].scatter (
+        data [:, 7],
+        data [:, 8]
+    )
+    axes [2].set_xlabel ('leaf-core sensor activity\nfirst period (a.u.)')
+    axes [2].set_xlim (-1.03, 1.03)
+    axes [2].set_ylabel ('leaf-core sensor activity\nthird period (a.u.)')
+    axes [2].set_ylim (-1.03, 1.03)
     figure.suptitle ('Sensor activity\nlast {}s of first and third period'.format (sampling_length))
     figure.savefig ('bee-where-about_L={}_D={}.png'.format (sampling_length, sampling_delta))
 
