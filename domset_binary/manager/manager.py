@@ -79,7 +79,7 @@ def main_operations (args, cfg, lwsg):
     if args.test_run:
         experiment_duration = TEST_DURATION
     else:
-        experiment_duration = cfg ['experiment_duration'] + domset_binary.util.video_sync.LENGTH
+        experiment_duration = cfg ['experiment_duration'] + domset_binary.util.video_sync.LENGTH / 60.0
     dws = worker_stub.connect_workers (lwsg)
     if args.run_folder is not None:
         check_experiment_folder (args.run_folder)
