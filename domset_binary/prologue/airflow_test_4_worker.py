@@ -564,7 +564,8 @@ def main (rtc_file_name, casu_number, worker_address):
                 controller = ctrl,
                 first_period_length = message ['first_period_length'],
                 airflow_duration = message ['airflow_duration'],
-                third_period_length = message ['third_period_length']
+                third_period_length = message ['third_period_length'],
+                time_adjustment = message ['time_adjustment'],
             )
             go = False
             zmq_sock_utils.send (socket, [OK])
