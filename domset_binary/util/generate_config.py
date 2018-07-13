@@ -7,7 +7,6 @@
 import argparse
 import copy
 import inspyred
-import os.path
 import pygraphviz
 import random
 import re
@@ -23,10 +22,11 @@ CAMERA_MARGIN_TOP = 100
 CAMERA_MARGIN_BOTTOM = 100
 
 class AbstractGenerator:
-    def __init__ (self, _graph_filename, _arena_filename, _project_name, _number_copies, _ISI_config_filename):
+    def __init__ (self, _graph_filename, _arena_filename, _project_name, _number_copies, _ISI_config_filename, experiment_duration):
         self.project_name = _project_name
         self.number_copies = _number_copies
         self.ISI_config_filename = _ISI_config_filename
+        self.experiment_duration = experiment_duration
         self.graph = pygraphviz.AGraph (_graph_filename)
         with open (_arena_filename, 'r') as fd:
             self.arena = yaml.safe_load (fd)
@@ -87,6 +87,32 @@ class AbstractGenerator:
         for k, v in self.node_CASUs.iteritems ():
             print ('{}: {}'.format (k, v))
 
+    def find_casu_flash (self):
+        print (self.__used_casus ())
+        print (self.available_CASUs.keys ())
+        for casu_number in self.__used_casus ():
+            del self.available_CASUs ['casu-{:03d}'.format (casu_number)]
+        print (self.available_CASUs.keys ())
+        result = None
+        best_distance = None
+        for casu_key in self.available_CASUs.keys ():
+            this_distance = None
+            this_distance_a = 0
+            for casu_number in self.__used_casus ():
+                d = self.casu_distance (casu_key, 'casu-{:03d}'.format (casu_number))
+                this_distance_a += d
+                if this_distance is None:
+                    this_distance = d
+                else:
+                    this_distance = min (this_distance, d)
+            if best_distance is None:
+                best_distance = this_distance_a
+                result = casu_key
+            elif best_distance > this_distance_a:
+                best_distance = this_distance_a
+                result = casu_key
+        return int (result [-3:])
+
     def create_files (self):
         """
         Creates the files that represent the assignment of CASUs to nodes in the logical graph.
@@ -94,10 +120,42 @@ class AbstractGenerator:
         :return:
         """
         self.create_CASU_config_file ()
+        self.create_ISDM_DARC_config_file ()
         self.create_ISI_nodemasters_file ()
         self.create_arena_location_file ()
         self.create_ISI_graph_yaml_file ()
         self.create_ISI_conf_file ()
+
+    def create_ISDM_DARC_config_file (self):
+        video = self.__compute_video_cropping ()
+        video ['frames_per_second'] = 10
+        contents = {
+            'controllers': {
+                'domset' : {
+                    'casus': self.__used_casus (),
+                },
+                'flash': {
+                    'casu': self.find_casu_flash (),
+                }
+            },
+            'graph': {
+                'edges': [
+                    [AbstractGenerator.graph_node_str (graph_index, n.name) for n in e]
+                    for e in self.graph.edges ()
+                    for graph_index in range (1, self.number_copies + 1)
+                ],
+                'node_CASUs': {
+                    k: [int (c [-3:]) for c in v]
+                    for k, v in self.node_CASUs.iteritems ()
+                }
+            },
+            'experiment_duration': self.experiment_duration,
+            'video': video
+        }
+        fn = '{}.isdm-config'.format (self.project_name)
+        with open (fn, 'w') as fd:
+            yaml.dump (contents, fd, default_flow_style = False)
+            fd.close ()
 
     def create_CASU_config_file (self):
         """
@@ -258,8 +316,8 @@ class AbstractGenerator:
 
 # Exhaustive
 class ExhaustiveSearch (AbstractGenerator):
-    def __init__ (self, _graph_filename, _arena_filename, _project_name, _number_copies, _ISI_config_filename):
-        AbstractGenerator.__init__ (self, _graph_filename, _arena_filename, _project_name, _number_copies, _ISI_config_filename)
+    def __init__ (self, _graph_filename, _arena_filename, _project_name, _number_copies, _ISI_config_filename, experiment_duration):
+        AbstractGenerator.__init__ (self, _graph_filename, _arena_filename, _project_name, _number_copies, _ISI_config_filename, experiment_duration)
 
     def run (self):
         list_edges = self.graph.edges ()
@@ -294,8 +352,8 @@ class ExhaustiveSearch (AbstractGenerator):
         return False
 
 class MinimizeNodeCASUsDistance_EvolutionaryAlgorithm (AbstractGenerator):
-    def __init__ (self, _graph_filename, _arena_filename, _project_name, _number_copies, _ISI_config_filename):
-        AbstractGenerator.__init__ (self, _graph_filename, _arena_filename, _project_name, _number_copies, _ISI_config_filename)
+    def __init__ (self, _graph_filename, _arena_filename, _project_name, _number_copies, _ISI_config_filename, experiment_duration):
+        AbstractGenerator.__init__ (self, _graph_filename, _arena_filename, _project_name, _number_copies, _ISI_config_filename, experiment_duration)
         self.chromosome_size = self.number_copies * len (self.graph.edges ())
         self.possible_shifts = {}
         for casu_key_1 in self.arena [BEE_ARENA].keys ():
@@ -408,9 +466,9 @@ def main ():
     else:
         project_name = args.project
     if args.algorithm == ExhaustiveSearch.__name__:
-        ag = ExhaustiveSearch (args.graph, args.arena, project_name, args.copy, args.ISI_config)
+        ag = ExhaustiveSearch (args.graph, args.arena, project_name, args.copy, args.ISI_config, args.experiment_duration)
     elif args.algorithm == MinimizeNodeCASUsDistance_EvolutionaryAlgorithm.__name__:
-        ag = MinimizeNodeCASUsDistance_EvolutionaryAlgorithm (args.graph, args.arena, project_name, args.copy, args.ISI_config)
+        ag = MinimizeNodeCASUsDistance_EvolutionaryAlgorithm (args.graph, args.arena, project_name, args.copy, args.ISI_config, args.experiment_duration)
     ag.run ()
 
 def parse_arguments ():
@@ -459,6 +517,12 @@ def parse_arguments ():
         type = str,
         required = True,
         help = 'ISI configuration file with parameters that do not depend on the graph'
+    )
+    parser.add_argument (
+        '--experiment-duration',
+        metavar = 'T',
+        default = 25,
+        help = 'duration of an experiment in minutes'
     )
     return parser.parse_args ()
 
