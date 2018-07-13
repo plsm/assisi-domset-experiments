@@ -613,7 +613,7 @@ def temperature_profile_leaf (controller, first_period_length, airflow_duration,
     controller.end ()
 
 def temperature_profile_core (controller, first_period_length, rate_temperature_increase, node_size, airflow_duration, third_period_length):
-    temperature_reference = DomsetController.MIN_TEMPERATURE
+    temperature_reference = DomsetController.START_TEMPERATURE
     # first period
     flash_led (controller.casu)
     start = time.time ()
