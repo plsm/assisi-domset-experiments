@@ -601,7 +601,7 @@ def flash_led (casu):
     time.sleep (LED_DURATION)
     casu.set_diagnostic_led_rgb (0, 0, 0)
 
-def temperature_profile_leaf (controller, first_period_length, airflow_duration, third_period_length, time_adjustment = 300):
+def temperature_profile_leaf (controller, first_period_length, airflow_duration, third_period_length, time_adjustment):
     controller._time_length = first_period_length - LED_DURATION
     flash_led (controller.casu)
     controller.run (0)
@@ -627,14 +627,8 @@ def temperature_profile_core (controller, first_period_length, rate_temperature_
     # second period
     flash_led (controller.casu)
     controller.casu.set_airflow_intensity(1)
-    start = time.time ()
-    stop = start + airflow_duration - LED_DURATION
-    while time.time () < stop:
-        temperature_reference = max (
-            DomsetController.MIN_TEMPERATURE,
-            temperature_reference - rate_temperature_increase * DELTA)
-        controller.casu.set_temp (temperature_reference)
-        time.sleep (DELTA)
+    controller.casu.set_temp (DomsetController.MIN_TEMPERATURE)
+    time.sleep (airflow_duration - LED_DURATION)
     controller.casu.airflow_standby ()
     # third period
     controller._time_length = third_period_length
