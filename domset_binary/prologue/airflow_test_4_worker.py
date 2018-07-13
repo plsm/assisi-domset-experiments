@@ -124,6 +124,14 @@ class DomsetController:
         self._blow_start_condition = 12 # n x Td seconds minimum activity below threshold before we start blowing
         self._default_blow_duration = 60.0
 
+        #fish communication
+        self.thres_cool = self._start_cool
+        self.thres_blow = self._start_heat
+        self.thres_blow = 0.0
+
+        self.reset_temp = 0.0
+        self.delta_temp_ref = 0.0
+        self.reset_threshold = 0.0
 
         # Set up zeta logging
         now_str = datetime.now().__str__().split('.')[0]
