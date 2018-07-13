@@ -9,6 +9,7 @@ import assisipy_utils.darc.manager
 import airflow_test_4_worker
 from domset_binary.util import zmq_sock_utils
 import domset_binary.manager.util
+import util.video
 
 
 class Airflow_Test_Manager (assisipy_utils.darc.manager.DARC_Manager):
@@ -39,6 +40,18 @@ class Airflow_Test_Manager (assisipy_utils.darc.manager.DARC_Manager):
         for a in self.atm_config ['arenas']:
             for sn in ['socket_core', 'socket_leaf']:
                 zmq_sock_utils.send_recv (a [sn], [airflow_test_4_worker.INITIALIZE])
+        # record background video
+        print ('Press ENTER to record a background video')
+        raw_input ('> ')
+        number_frames = self.atm_config ['video']['frames_per_second'] * BACKGROUND_VIDEO_LENGTH
+        util.video.record_video_gstreamer (
+            os.path.join (experiment_folder, 'background.avi'),
+            number_frames,
+            self.atm_config ['video']['frames_per_second'],
+            self.atm_config ['video']['crop_left'],
+            self.atm_config ['video']['crop_right'],
+            self.atm_config ['video']['crop_top'],
+            self.atm_config ['video']['crop_bottom'])
         # tell the user to put bees
         print ('Put bees in the arena and press ENTER')
         raw_input ('> ')
