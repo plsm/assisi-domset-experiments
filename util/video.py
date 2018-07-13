@@ -33,10 +33,10 @@ def split_video (video_filename, number_frames, frames_per_second, output_templa
     process.wait ()
     return process.returncode
 
-def record_video_gstreamer (video_filename, number_frames, frames_per_second, crop_left, crop_right, crop_top, crop_bottom, debug = True):
+def record_video_gstreamer (video_filename, number_frames, frames_per_second, crop_left, crop_right, crop_top, crop_bottom, async = False, debug = True):
     """
 
-    :rtype: int
+    :rtype: Union[int,subprocess.Process]
     """
     command =  [
         app.GST_LAUNCH,
@@ -59,5 +59,8 @@ def record_video_gstreamer (video_filename, number_frames, frames_per_second, cr
         print (' '.join (command))
         print
     process = subprocess.Popen (command)
-    process.wait ()
-    return process.returncode
+    if async:
+        return process
+    else:
+        process.wait ()
+        return process.returncode
