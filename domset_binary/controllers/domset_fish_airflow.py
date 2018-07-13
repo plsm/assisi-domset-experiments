@@ -202,6 +202,7 @@ class DomsetController(Thread):
                 self.time_start_cool = time.time()
                 self.time_start_heat = time.time()
                 self.reset_threshold = 0.0
+                self.logger.writerow (["ZT", time.time (), None, self.time_start_cool, self.time_start_heat])
             self.calculate_sensor_activity()
             self.calculate_temp_ref()
             if (self.reset_temp == 1.0):
@@ -338,6 +339,7 @@ class DomsetController(Thread):
         self.time_start = time.time()
         self.time_start_cool = time.time()
         self.time_start_heat = time.time()
+        self.logger.writerow (["ZT", time.time (), self.time_start, self.time_start_cool, self.time_start_heat])
         self.i = 0
         self.time_index = 1
         while (time.time() - self.time_start < self._time_length) and not (self.stop_flag.wait(self._Td)) and not self.stop:
