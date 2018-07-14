@@ -120,7 +120,8 @@ class CASU_DOMSET_Log:
         for axa in list_axes:
             axa.scatter (
                 xs,
-                ys
+                ys,
+                s = 0.1,
             )
 
     def __plot_casu_average_activity (self, index, list_axes):

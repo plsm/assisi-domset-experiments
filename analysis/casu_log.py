@@ -106,20 +106,22 @@ class CASU_Log:
             xs = [r [0] for r in self.temperature]
             ys = [sum (r [1:]) / float (len (r) - 1) for r in self.temperature]
             for axa in list_axes:
-                axa.scatter (
+                axa.plot (
                     xs,
                     ys,
-                    c = plot_common.COLOURS [index]
+                    '-',
+                    color = plot_common.COLOURS [index]
                 )
         for temperature_field in [assisipy.casu.TEMP_F, assisipy.casu.TEMP_L, assisipy.casu.TEMP_B, assisipy.casu.TEMP_R, assisipy.casu.TEMP_TOP, assisipy.casu.TEMP_PCB, assisipy.casu.TEMP_RING, assisipy.casu.TEMP_WAX]:
             if temperature_field in args.get ('temp_field', []):
                 xs = [r [0] for r in self.temperature]
                 ys = [r [1 + assisipy.casu.TEMP_F - temperature_field] for r in self.temperature]
                 for axa in list_axes:
-                    axa.scatter (
+                    axa.plot (
                         xs,
                         ys,
-                        c = plot_common.COLOURS [index]
+                        '-',
+                        color = plot_common.COLOURS [index]
                     )
                     
     def __plot_setpoint_peltier (self, index, list_axes, **args):
