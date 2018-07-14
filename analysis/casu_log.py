@@ -22,6 +22,7 @@ PELTIER = 'Peltier'
 AIRFLOW = 'Airflow'
 LED = 'DiagnosticLed'
 ACTIVITY = 'activity'
+LED_ACTUATOR = 'dled_ref'
 
 class CASU_Log:
     
@@ -46,12 +47,14 @@ class CASU_Log:
         self.activity = None
         self.hits = None
         self.moving_average_hits = None
+        _led_actuator = []
         self.__data_dicts = {
             IR_RAW : self.infrared_raw,
             TEMP : self.temperature,
             PELTIER : self.peltier,
             AIRFLOW : self.airflow,
             LED : _led,
+            LED_ACTUATOR : _led_actuator,
         }
         # read CASU log
         skipped = {}
@@ -67,8 +70,10 @@ class CASU_Log:
         # convert to numpy arrays
         self.infrared_raw = numpy.array (self.infrared_raw)
         self.led = numpy.array (_led)
+        self.led_actuator = numpy.array (_led_actuator)
         self.__data_dicts [IR_RAW] = self.infrared_raw
-        self.__data_dicts [LED] = _led
+        self.__data_dicts [LED] = self.led
+        self.__data_dicts [LED_ACTUATOR] = self.led_actuator
 
     def plot (self, index, dict_axes, **args):
         if IR_RAW in dict_axes:
