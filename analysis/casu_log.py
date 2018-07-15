@@ -18,7 +18,7 @@ import util.math
 
 IR_RAW = 'ir_raw'
 TEMP = 'temp'
-PELTIER = 'Peltier'
+PELTIER = 'Peltier_temp'
 AIRFLOW = 'Airflow'
 LED = 'DiagnosticLed'
 ACTIVITY = 'activity'
@@ -100,7 +100,7 @@ class CASU_Log:
                     xs,
                     ys,
                     '-',
-                    label = 'IR{:3d}'.format (self.number),
+                    label = 'avg IR{:3d}'.format (self.number),
                     color = plot_common.COLOURS [index]
                 )
 
@@ -124,7 +124,7 @@ class CASU_Log:
                 axa.plot (
                     xs,
                     ys,
-                    '-',
+                    '-.',
                     label = 'avg temp {}'.format (self.number),
                     color = plot_common.COLOURS [index]
                 )
@@ -143,17 +143,17 @@ class CASU_Log:
                     
     def __plot_setpoint_peltier (self, index, list_axes, **args):
         self.__print_info (list_axes, self.peltier, 'peltier')
-        if args.get ('peltier', True):
-            xs = [r [0] for r in self.peltier]
-            ys = [r [1] * r [2] for r in self.peltier]
-            for axa in list_axes:
-                axa.plot (
-                    xs,
-                    ys,
-                    '-',
-                    label = 'peltier{:3d}'.format (self.number),
-                    color = plot_common.COLOURS [index]
-                )
+        xs = [r [0] for r in self.peltier]
+        ys = [r [1] for r in self.peltier]
+        for axa in list_axes:
+            axa.scatter (
+                xs,
+                ys,
+                label = 'peltier{:3d}'.format (self.number),
+                color = plot_common.COLOURS [index] if 'peltier_colour' not in args else args ['peltier_colour'],
+                s = 4,
+                marker = 'P',
+            )
 
     def __plot_setpoint_airflow (self, index, list_axes, **args):
         self.__print_info (list_axes, self.airflow, 'airflow')
