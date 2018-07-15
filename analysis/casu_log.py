@@ -104,6 +104,16 @@ class CASU_Log:
                     color = plot_common.COLOURS [index]
                 )
 
+    __TEMPERATURE_LABELS = {
+        assisipy.casu.TEMP_F : 'front',
+        assisipy.casu.TEMP_L : 'left',
+        assisipy.casu.TEMP_B : 'bottom',
+        assisipy.casu.TEMP_R : 'right',
+        assisipy.casu.TEMP_TOP : 'top',
+        assisipy.casu.TEMP_PCB : 'pcb',
+        assisipy.casu.TEMP_RING : 'ring',
+        assisipy.casu.TEMP_WAX : 'wax',
+    }
     def __plot_sensor_temperature (self, index, list_axes, **args):
         if args.get ('avg_temp', True) or len (args.get ('temp_field', [])) > 0:
             self.__print_info (list_axes, self.temperature, 'temperature')
@@ -115,6 +125,7 @@ class CASU_Log:
                     xs,
                     ys,
                     '-',
+                    label = 'avg temp {}'.format (self.number),
                     color = plot_common.COLOURS [index]
                 )
         for temperature_field in [assisipy.casu.TEMP_F, assisipy.casu.TEMP_L, assisipy.casu.TEMP_B, assisipy.casu.TEMP_R, assisipy.casu.TEMP_TOP, assisipy.casu.TEMP_PCB, assisipy.casu.TEMP_RING, assisipy.casu.TEMP_WAX]:
@@ -126,6 +137,7 @@ class CASU_Log:
                         xs,
                         ys,
                         '-',
+                        label = 'temp {} {}'.format (CASU_Log.__TEMPERATURE_LABELS [temperature_field], self.number),
                         color = plot_common.COLOURS [index]
                     )
                     
