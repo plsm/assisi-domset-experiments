@@ -107,45 +107,55 @@ def plot_arena (run_number, core_casu_number, leaf_casu_number,
         first_period_length, airflow_period_length, third_period_length, casu_logs, casu_domset_logs):
     casu_numbers = [core_casu_number, leaf_casu_number]
     print ('[I] Creating plot for arena with core casu {} and leaf casu'.format (core_casu_number, leaf_casu_number))
-    figure_width, figure_height = 12, 6
+    figure_width, figure_height = 14, 9
     figure = matplotlib.pyplot.figure (figsize = (figure_width, figure_height))
+    margin_left, margin_right  = 0.75, 0.1
+    margin_bottom, margin_top = 0.6, 0.75
     axes = figure.subplots (
-        nrows = 3,
+        nrows = 5,
         ncols = 2,
         gridspec_kw = {
             'width_ratios' : [2, 2],
-            'left' : 0.05,
-            'right' : 0.99,
-#            'wspace' : 0.1
+            'right' : 1 - margin_right / figure_width,
+            'left' : margin_left / figure_width,
+            'top' : 1 - margin_top / figure_height,
+            'bottom' : margin_bottom / figure_height,
+            'wspace' : 0.05
         },
-        sharex = 'col',
+        sharex = True,
         sharey = 'row',
     )
-    for axa in axes [0,:]:
-        axa.set_ylim (25.15, 37.15)
-        axa.set_ylabel (u'temperature (℃)', fontsize = 7)
-    for axa in axes [1,:]:
-        axa.set_ylim (-0.03, 1.03)
-        axa.set_ylabel ('node activity (a.u.)', fontsize = 7)
-    for axa in axes [2,:]:
-        axa.set_ylim (-0.03, 1.03)
-        axa.set_ylabel ('thresholds (a.u.)', fontsize = 7)
+    axes [0, 0].set_ylim (25.87, 36.13)
+    axes [0, 0].set_ylabel (u'temperature (℃)', fontsize = 7)
+    axes [1, 0].set_ylim (-0.03, 1.03)
+    axes [1, 0].set_ylabel ('casu activity (a.u.)', fontsize = 7)
+    axes [2, 0].set_ylim (-0.03, 1.03)
+    axes [2, 0].set_ylabel ('thresholds (a.u.)', fontsize = 7)
+    axes [3, 0].set_ylim (0, 40000)
+    axes [3, 0].set_ylabel ('infrared raw (a.u.)', fontsize = 7)
+    axes [4, 0].set_ylim (-0.03, 1.03)
+    axes [4, 0].set_ylabel ('computed\nbee activity (a.u.)', fontsize = 7)
     for index, a_casu_number in enumerate (casu_numbers):
         axes_dict = {
             casu_log.TEMP : [axes [0,index]],
+            casu_log.PELTIER : [axes [0, index]],
             casu_log.AIRFLOW : axes [:,index],
             casu_log.LED : axes [:,index],
+            casu_log.IR_RAW : [axes [3, index]],
+            casu_log.ACTIVITY : [axes [4, index]],
         }
         casu_logs [a_casu_number].plot (
             index,
             axes_dict,
             ir_raw_avg = True,
             avg_temp = False,
-            temp_field = [assisipy.casu.TEMP_WAX]
+            temp_field = [assisipy.casu.TEMP_WAX],
+            peltier_colour = '#1F2F00',
         )
         axes_dict = {
-            casu_domset_log.CAC : [axes [1,index]],
-            casu_domset_log.TH : [axes [2,index]],
+            casu_domset_log.CAC : [axes [1, index]],
+            casu_domset_log.TH : [axes [2, index]],
+            casu_domset_log.NT : [axes [0, index]],
         }
         casu_domset_logs [a_casu_number].plot (
             index,
@@ -154,14 +164,14 @@ def plot_arena (run_number, core_casu_number, leaf_casu_number,
     # setup axes
     zero_time = numpy.mean ([a_casu_log.led_actuator [2,0] for a_casu_log in casu_logs.values ()])
     ts = [t + zero_time for t in range (0, first_period_length + airflow_period_length + third_period_length, 60)]
-    for axa in [axes [2,0], axes [2,1]]:
+    for axa in [axes [4, 0], axes [4, 1]]:
         axa.set_xlabel ('time (mm:ss)', fontsize = 7)
         axa.set_xticks (ts)
         axa.set_xticklabels ([datetime.datetime.fromtimestamp (t - ts [0]).strftime ('%M:%S') for t in ts])
         for ata in [axa.xaxis, axa.yaxis]:
             for tick in ata.get_major_ticks ():
                 tick.label.set_fontsize (7)
-    for axa in [axes [i,j] for i in range (3) for j in range (2)]:
+    for axa in [axes [i, j] for i in range (5) for j in range (2)]:
         axa.legend (fontsize = 7)
         for ata in [axa.xaxis, axa.yaxis]:
             for tick in ata.get_major_ticks ():
