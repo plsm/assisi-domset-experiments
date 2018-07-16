@@ -139,7 +139,6 @@ def plot_arena (run_number, core_casu_number, leaf_casu_number,
         axes_dict = {
             casu_log.TEMP : [axes [0,index]],
             casu_log.PELTIER : [axes [0, index]],
-            casu_log.AIRFLOW : axes [:,index],
             casu_log.LED : axes [:,index],
             casu_log.IR_RAW : [axes [3, index]],
             casu_log.ACTIVITY : [axes [4, index]],
@@ -158,6 +157,13 @@ def plot_arena (run_number, core_casu_number, leaf_casu_number,
             casu_domset_log.NT : [axes [0, index]],
         }
         casu_domset_logs [a_casu_number].plot (
+            index,
+            axes_dict,
+        )
+        axes_dict = {
+            casu_log.AIRFLOW : axes [:,index],
+        }
+        casu_logs [core_casu_number].plot (
             index,
             axes_dict,
         )
