@@ -500,7 +500,7 @@ class DomsetController:
 
         d_t_ref = 0.0
         if heat == 1.0:
-            d_t_ref = self._step_heat * self.group_size
+            d_t_ref = self._step_heat * self.spoof_group_size
         if cool == 1.0:
             d_t_ref = - self._step_cool
         if d_t_ref > 0.5:
