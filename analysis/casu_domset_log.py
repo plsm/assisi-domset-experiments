@@ -85,6 +85,42 @@ class CASU_DOMSET_Log:
         self.__data_dicts [TH_MIN] = self.temperature_threshold_min
 
     def plot (self, index, dict_axes, **args):
+        '''
+        Plot CASU DOMSET log data in the provided axes.
+
+        Parameter `index` is a number starting from zero used to compute a colour for the plot.
+
+        Parameter `dict_axes` is a dictionary of integers to a list of axes.
+        For each CASU DOMSET log data there is a unique integer.
+
+        To plot casu temperature use the value `CT`.
+
+        To plot casu airflow set point use the value 'CAF`.
+
+        To plot casu average activity use the value `CAC`.
+
+        To plot node average activity use the value `NAC`.
+
+        To plot casu active sensors use the value `CAS`.
+        If the argument `avg_active_sensor` is True, then the average is displayed.
+        If the argument `list_active_sensors` is provided and contains any of the constants `assisipy.casu.IR_xxx` constants, then the corresponding active sensor value is displayed.
+
+        To plot node temperature use the value `NT`.
+
+        To plot casu thresholds use the value `TH`.
+
+        Usage examples:
+
+        `
+        cdl = casu_domset_log.CASU_DOMSET_Log (1)
+        cdl.plot (
+            index = 0,
+            dict_axes = {
+               casu_domset_log.TH : [axes],
+            }
+        )
+        `
+        '''
         if CT in dict_axes:
             self.__plot_casu_temperature (index, dict_axes [CT])
         if CAF in dict_axes:
@@ -151,8 +187,8 @@ class CASU_DOMSET_Log:
 
     def __plot_casu_active_sensors (self, index, list_axes, **args):
         avg_active_sensors = args.get ('avg_active_sensors', True)
-        temp_field = args.get ('temp_field', [])
-        if avg_active_sensors or len (temp_field) > 0:
+        list_active_sensors = args.get ('list_active_sensors', [])
+        if avg_active_sensors or len (list_active_sensors) > 0:
             self.__print_info (list_axes, self.casu_active_sensors, 'casu active sensors')
         if avg_active_sensors:
             xs = [r [0] for r in self.casu_active_sensors]
@@ -166,7 +202,7 @@ class CASU_DOMSET_Log:
                     color = plot_common.COLOURS [index]
                 )
         for infrared_field in [assisipy.casu.IR_B, assisipy.casu.IR_BL, assisipy.casu.IR_BR, assisipy.casu.IR_F, assisipy.casu.IR_FL, assisipy.casu.IR_FR]:
-            if infrared_field in temp_field:
+            if infrared_field in list_active_sensors:
                 xs = [r [0] for r in self.casu_active_sensors]
                 ys = [r [1 + assisipy.casu.IR_F - infrared_field] for r in self.casu_active_sensors]
                 for axa in list_axes:
