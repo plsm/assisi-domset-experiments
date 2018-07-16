@@ -5,6 +5,7 @@ if __name__ == '__main__':
 import argparse
 import csv
 import matplotlib.pyplot
+import numpy
 import os.path
 import re
 import sys
@@ -19,6 +20,12 @@ CAC = 'CAC'
 NAC = 'NAC'
 CAS = 'CAS'
 NT = 'NT'
+ZT = 'ZT'
+IRT = 'IRT'
+TH_HEAT = 'TH_HEAT'
+TH_COOL = 'TH_COOL'
+TH_MIN = 'TH_MIN'
+TH = 'TH'
 
 class CASU_DOMSET_Log:
     def __init__ (self, number, base_path = '.'):
@@ -44,13 +51,23 @@ class CASU_DOMSET_Log:
         self.node_average_activity = []
         self.casu_active_sensors = []
         self.node_temperature_reference = []
+        self.zero_time = []
+        self.infrared_thresholds = []
+        _temperature_threshold_heat = []
+        _temperature_threshold_cool = []
+        _temperature_threshold_min = []
         self.__data_dicts = {
             CT: self.casu_temperature,
             CAF: self.casu_airflow_set_point,
             CAC: self.casu_average_activity,
             NAC: self.node_average_activity,
             CAS: self.casu_active_sensors,
-            NT: self.node_temperature_reference
+            NT: self.node_temperature_reference,
+            ZT: self.zero_time,
+            IRT: self.infrared_thresholds,
+            TH_HEAT: _temperature_threshold_heat,
+            TH_COOL: _temperature_threshold_cool,
+            TH_MIN: _temperature_threshold_min,
         }
         with open (filename (number, base_path)) as fd:
             reader = csv.reader (fd, delimiter=';')
@@ -60,6 +77,12 @@ class CASU_DOMSET_Log:
                 except KeyError:
                     print ('[E] Unknown CASU DOMSET log data: {}'.format (row))
                     sys.exit (1)
+        self.temperature_threshold_heat = numpy.array (_temperature_threshold_heat)
+        self.temperature_threshold_cool = numpy.array (_temperature_threshold_cool)
+        self.temperature_threshold_min = numpy.array (_temperature_threshold_min)
+        self.__data_dicts [TH_HEAT] = self.temperature_threshold_heat
+        self.__data_dicts [TH_COOL] = self.temperature_threshold_cool
+        self.__data_dicts [TH_MIN] = self.temperature_threshold_min
 
     def plot (self, index, dict_axes, **args):
         if CT in dict_axes:
@@ -74,6 +97,8 @@ class CASU_DOMSET_Log:
             self.__plot_casu_active_sensors (index, dict_axes [CAS], **args)
         if NT in dict_axes:
             self.__plot_node_temperature (index, dict_axes [NT])
+        if TH in dict_axes:
+            self.__plot_temperature_thresholds (index, dict_axes [TH])
 
     def __plot_casu_temperature (self, index, list_axes):
         self.__print_info (list_axes, self.casu_temperature, 'casu temperature')
@@ -95,7 +120,8 @@ class CASU_DOMSET_Log:
         for axa in list_axes:
             axa.scatter (
                 xs,
-                ys
+                ys,
+                s = 0.1,
             )
 
     def __plot_casu_average_activity (self, index, list_axes):
@@ -162,6 +188,22 @@ class CASU_DOMSET_Log:
                 label = 'NT{:3d}'.format (self.number),
                 color = plot_common.COLOURS [index]
             )
+
+    def __plot_temperature_thresholds (self, index, list_axes):
+        for th, st, lb in zip (
+                [self.temperature_threshold_cool, self.temperature_threshold_heat, self.temperature_threshold_min],
+                [':', '--', '-.'],
+                ['C', 'H', 'M']):
+            xs = th [:, 0]
+            ys = th [:, 1]
+            for axa in list_axes:
+                axa.plot (
+                    xs,
+                    ys,
+                    st,
+                    label = 'TH{}{:3d}'.format (lb, self.number),
+                    color = plot_common.COLOURS [index]
+                )
 
     def min_time (self):
         return min ([

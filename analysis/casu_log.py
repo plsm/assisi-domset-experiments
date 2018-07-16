@@ -18,10 +18,11 @@ import util.math
 
 IR_RAW = 'ir_raw'
 TEMP = 'temp'
-PELTIER = 'Peltier'
+PELTIER = 'Peltier_temp'
 AIRFLOW = 'Airflow'
 LED = 'DiagnosticLed'
 ACTIVITY = 'activity'
+LED_ACTUATOR = 'dled_ref'
 
 class CASU_Log:
     
@@ -46,12 +47,14 @@ class CASU_Log:
         self.activity = None
         self.hits = None
         self.moving_average_hits = None
+        _led_actuator = []
         self.__data_dicts = {
             IR_RAW : self.infrared_raw,
             TEMP : self.temperature,
             PELTIER : self.peltier,
             AIRFLOW : self.airflow,
             LED : _led,
+            LED_ACTUATOR : _led_actuator,
         }
         # read CASU log
         skipped = {}
@@ -67,8 +70,10 @@ class CASU_Log:
         # convert to numpy arrays
         self.infrared_raw = numpy.array (self.infrared_raw)
         self.led = numpy.array (_led)
+        self.led_actuator = numpy.array (_led_actuator)
         self.__data_dicts [IR_RAW] = self.infrared_raw
-        self.__data_dicts [LED] = _led
+        self.__data_dicts [LED] = self.led
+        self.__data_dicts [LED_ACTUATOR] = self.led_actuator
 
     def plot (self, index, dict_axes, **args):
         if IR_RAW in dict_axes:
@@ -95,10 +100,20 @@ class CASU_Log:
                     xs,
                     ys,
                     '-',
-                    label = 'IR{:3d}'.format (self.number),
+                    label = 'avg IR{:3d}'.format (self.number),
                     color = plot_common.COLOURS [index]
                 )
 
+    __TEMPERATURE_LABELS = {
+        assisipy.casu.TEMP_F : 'front',
+        assisipy.casu.TEMP_L : 'left',
+        assisipy.casu.TEMP_B : 'bottom',
+        assisipy.casu.TEMP_R : 'right',
+        assisipy.casu.TEMP_TOP : 'top',
+        assisipy.casu.TEMP_PCB : 'pcb',
+        assisipy.casu.TEMP_RING : 'ring',
+        assisipy.casu.TEMP_WAX : 'wax',
+    }
     def __plot_sensor_temperature (self, index, list_axes, **args):
         if args.get ('avg_temp', True) or len (args.get ('temp_field', [])) > 0:
             self.__print_info (list_axes, self.temperature, 'temperature')
@@ -106,35 +121,39 @@ class CASU_Log:
             xs = [r [0] for r in self.temperature]
             ys = [sum (r [1:]) / float (len (r) - 1) for r in self.temperature]
             for axa in list_axes:
-                axa.scatter (
+                axa.plot (
                     xs,
                     ys,
-                    c = plot_common.COLOURS [index]
+                    '-.',
+                    label = 'avg temp {}'.format (self.number),
+                    color = plot_common.COLOURS [index]
                 )
         for temperature_field in [assisipy.casu.TEMP_F, assisipy.casu.TEMP_L, assisipy.casu.TEMP_B, assisipy.casu.TEMP_R, assisipy.casu.TEMP_TOP, assisipy.casu.TEMP_PCB, assisipy.casu.TEMP_RING, assisipy.casu.TEMP_WAX]:
             if temperature_field in args.get ('temp_field', []):
                 xs = [r [0] for r in self.temperature]
                 ys = [r [1 + assisipy.casu.TEMP_F - temperature_field] for r in self.temperature]
                 for axa in list_axes:
-                    axa.scatter (
+                    axa.plot (
                         xs,
                         ys,
-                        c = plot_common.COLOURS [index]
+                        '-',
+                        label = 'temp {} {}'.format (CASU_Log.__TEMPERATURE_LABELS [temperature_field], self.number),
+                        color = plot_common.COLOURS [index]
                     )
                     
     def __plot_setpoint_peltier (self, index, list_axes, **args):
         self.__print_info (list_axes, self.peltier, 'peltier')
-        if args.get ('peltier', True):
-            xs = [r [0] for r in self.peltier]
-            ys = [r [1] * r [2] for r in self.peltier]
-            for axa in list_axes:
-                axa.plot (
-                    xs,
-                    ys,
-                    '-',
-                    label = 'peltier{:3d}'.format (self.number),
-                    color = plot_common.COLOURS [index]
-                )
+        xs = [r [0] for r in self.peltier]
+        ys = [r [1] for r in self.peltier]
+        for axa in list_axes:
+            axa.scatter (
+                xs,
+                ys,
+                label = 'peltier{:3d}'.format (self.number),
+                color = plot_common.COLOURS [index] if 'peltier_colour' not in args else args ['peltier_colour'],
+                s = 4,
+                marker = 'P',
+            )
 
     def __plot_setpoint_airflow (self, index, list_axes, **args):
         self.__print_info (list_axes, self.airflow, 'airflow')

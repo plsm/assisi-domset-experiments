@@ -5,11 +5,9 @@ from assisipy import casu
 
 import sys
 import time
-from threading import Thread, Event
+from threading import Event
 from datetime import datetime
-from copy import deepcopy
 import json
-from json import encoder
 import zmq
 
 import csv
@@ -28,7 +26,7 @@ class DomsetController:
     MIN_TEMPERATURE = 26
     START_TEMPERATURE = 28
 
-    def __init__(self, rtc_file, log=False):
+    def __init__(self, rtc_file):
 
         self.turn_off_LED = False
         self.casu = casu.Casu(rtc_file,log=True)
@@ -87,7 +85,7 @@ class DomsetController:
         self.blow_prev = 0.0
 
         # sensor activity variables - denote bee presence
-        self.activeSensors = [0]
+        self.activeSensors = [0.0]
         self._sensors_buf_len = 10 * Ttemp # last 2 sec? should be Ttemp/Td
         self.ir_thresholds = [25000, 25000, 25000, 25000, 25000, 25000]
         self.integrate_activity = 0.0
@@ -124,10 +122,13 @@ class DomsetController:
         self._blow_start_condition = 12 # n x Td seconds minimum activity below threshold before we start blowing
         self._default_blow_duration = 60.0
 
+        self.start_blow = None
+
         #fish communication
         self.thres_cool = self._start_cool
         self.thres_blow = self._start_heat
         self.thres_blow = 0.0
+        self.thres_heat = None
 
         self.reset_temp = 0.0
         self.delta_temp_ref = 0.0
@@ -186,7 +187,6 @@ class DomsetController:
 
     def update(self):
 
-        t_old = self.t_prev
         self.t_prev = time.time()
         # calculate local ir sensor activity over time
         self.calculate_self_average_activity()
@@ -220,16 +220,16 @@ class DomsetController:
                         #else:
                             #self.nbg_data_buffer[nbg_id].pop(0)
             # calculate cumulative sensor activity of a group --> temperature control
-            if (self.reset_threshold == 1.0):
+            if self.reset_threshold == 1.0:
                 self.time_start_cool = time.time()
                 self.time_start_heat = time.time()
                 self.reset_threshold = 0.0
             self.calculate_sensor_activity()
             self.calculate_temp_ref()
-            if (self.reset_temp == 1.0):
+            if self.reset_temp == 1.0:
                 self.temp_ref = 28.0
                 self.reset_temp = 0.0
-            if (self.group_size > 1):
+            if self.group_size > 1:
                 for nbg in self.casu._Casu__neighbors:
                     if not ("cats" in nbg):
                         success = self.casu.send_message(nbg,json.dumps({
@@ -360,14 +360,14 @@ class DomsetController:
         self.time_start_cool = time.time() - time_adjustment
         self.time_start_heat = time.time() - time_adjustment
         self.i = 0
-        self.time_index = 1
+        time_index = 1
         while (time.time() - self.time_start < self._time_length) and not (self.stop_flag.wait(self._Td)):
-            if (time.time() - self.time_start > self.time_index * 100) and (time.time() - self.time_start < self.time_index * 100 + 1):
-                print("[casu-{:03}] {}s elapsed".format(self.casu_id, self.time_index * 100))
-                self.time_index += 1
+            if (time.time() - self.time_start > time_index * 100) and (time.time() - self.time_start < time_index * 100 + 1):
+                print("[casu-{:03}] {}s elapsed".format(self.casu_id, time_index * 100))
+                time_index += 1
             self.update_activeSensors_estimate()
             self.i += 1
-            if (self.i >= 1 / (self._Td * float(self._temp_control_freq))):
+            if self.i >= 1 / (self._Td * float(self._temp_control_freq)):
                 #print(str(self.casu_id) + ' ' + str(self.t_prev - self.time_start))
                 self.update()
                 if self.turn_off_LED:
@@ -478,7 +478,7 @@ class DomsetController:
         #if ((self.maximum_activity < scaling_cool) or (self.minimum_activity == 0.0)) and (self.temp_ctrl > 0):
         if (self.maximum_activity < scaling_cool) and (self.temp_ctrl > 0):
             self.cool_float += self._rho * 1.0
-        if (self.cool_float > 0.5):
+        if self.cool_float > 0.5:
             cool = 1.0
         else:
             cool = 0.0
@@ -499,9 +499,9 @@ class DomsetController:
             print("temp_ctrl " + str(self.temp_ctrl))
 
         d_t_ref = 0.0
-        if (heat == 1.0):
+        if heat == 1.0:
             d_t_ref = self._step_heat * self.group_size
-        if (cool == 1.0):
+        if cool == 1.0:
             d_t_ref = - self._step_cool
         if d_t_ref > 0.5:
             d_t_ref = 0.5
@@ -532,17 +532,17 @@ class DomsetController:
     def calculate_blow_ref(self):
         time_now = time.time()
         if (time_now - self.time_start > self._blow_allowed_start) and (time_now - self.time_start < self._blow_allowed_stop):
-            if (self.blow == 0.0):
-                if (self.integrate_minimum_activity < self._integrate_min_windup):
-                    if (self.minimum_activity < self._scaling_blow):
+            if self.blow == 0.0:
+                if self.integrate_minimum_activity < self._integrate_min_windup:
+                    if self.minimum_activity < self._scaling_blow:
                         self.integrate_minimum_activity += 1
-                        if (self.casu_id == 20):
+                        if self.casu_id == 20:
                             print("Integrating activity " + str(self.integrate_minimum_activity))
                     else:
                         self.integrate_minimum_activity = 0
-                if (self.integrate_minimum_activity >= self._blow_start_condition):
+                if self.integrate_minimum_activity >= self._blow_start_condition:
                     self.blow = self._default_blow_duration
-                    if (self.casu_id == 20):
+                    if self.casu_id == 20:
                         print("Integration over, setpoint blowing " + str(self.integrate_minimum_activity))
 
 
@@ -555,7 +555,7 @@ def main (rtc_file_name, casu_number, worker_address):
     print ('[I] Binding to {}'.format (worker_address))
     socket.bind (worker_address)
     # Initialize domset algorithm
-    ctrl = DomsetController (rtc_file_name, log = True)
+    ctrl = DomsetController (rtc_file_name)
     ctrl.calibrate_ir_thresholds (500, 1)
     ctrl.initialize_temperature ()
     # main thread loop
@@ -596,10 +596,10 @@ def main (rtc_file_name, casu_number, worker_address):
 
 LED_DURATION = 1
 
-def flash_led (casu):
-    casu.set_diagnostic_led_rgb (r = 1, g = 0, b = 0)
+def flash_led (a_casu):
+    a_casu.set_diagnostic_led_rgb (r = 1, g = 0, b = 0)
     time.sleep (LED_DURATION)
-    casu.set_diagnostic_led_rgb (0, 0, 0)
+    a_casu.set_diagnostic_led_rgb (0, 0, 0)
 
 def temperature_profile_leaf (controller, first_period_length, airflow_duration, third_period_length, time_adjustment):
     controller._time_length = first_period_length - LED_DURATION
@@ -609,11 +609,12 @@ def temperature_profile_leaf (controller, first_period_length, airflow_duration,
     flash_led (controller.casu)
     controller.reset ()
     controller.run (time_adjustment)
+    flash_led (controller.casu)
     # stop cleanly
     controller.end ()
 
 def temperature_profile_core (controller, first_period_length, rate_temperature_increase, node_size, airflow_duration, third_period_length):
-    temperature_reference = DomsetController.MIN_TEMPERATURE
+    temperature_reference = DomsetController.START_TEMPERATURE
     # first period
     flash_led (controller.casu)
     start = time.time ()
@@ -634,6 +635,7 @@ def temperature_profile_core (controller, first_period_length, rate_temperature_
     controller._time_length = third_period_length
     controller.spoof_group_size = node_size
     controller.run (0)
+    flash_led (controller.casu)
     # stop cleanly
     controller.end ()
 
