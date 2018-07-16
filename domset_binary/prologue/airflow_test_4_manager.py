@@ -11,6 +11,7 @@ from domset_binary.util import zmq_sock_utils
 import domset_binary.manager.util
 import util.video
 
+BACKGROUND_VIDEO_LENGTH = 2
 
 class Airflow_Test_Manager (assisipy_utils.darc.manager.DARC_Manager):
     def __init__ (self, airflow_test_config_filename, arena_filename):
