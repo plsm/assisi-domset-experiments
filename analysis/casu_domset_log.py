@@ -108,6 +108,7 @@ class CASU_DOMSET_Log:
         To plot node temperature use the value `NT`.
 
         To plot casu thresholds use the value `TH`.
+        If the argument `plot_all_thresholds` is True, then all thresholds are plotted, otherwise only the heating threshold is plotted.
 
         Usage examples:
 
@@ -134,7 +135,7 @@ class CASU_DOMSET_Log:
         if NT in dict_axes:
             self.__plot_node_temperature (index, dict_axes [NT])
         if TH in dict_axes:
-            self.__plot_temperature_thresholds (index, dict_axes [TH])
+            self.__plot_temperature_thresholds (index, dict_axes [TH], **args)
 
     def __plot_casu_temperature (self, index, list_axes):
         self.__print_info (list_axes, self.casu_temperature, 'casu temperature')
@@ -225,11 +226,20 @@ class CASU_DOMSET_Log:
                 color = plot_common.COLOURS [index]
             )
 
-    def __plot_temperature_thresholds (self, index, list_axes):
-        for th, st, lb in zip (
+    def __plot_temperature_thresholds (self, index, list_axes, **args):
+        plot_all = args.get ('plot_all_thresholds', False)
+        if plot_all:
+            data = zip (
                 [self.temperature_threshold_cool, self.temperature_threshold_heat, self.temperature_threshold_min],
                 [':', '--', '-.'],
-                ['C', 'H', 'M']):
+                ['C', 'H', 'M'])
+        else:
+            data = zip (
+                [self.temperature_threshold_heat],
+                ['--'],
+                ['H']
+                )
+        for th, st, lb in data:
             xs = th [:, 0]
             ys = th [:, 1]
             for axa in list_axes:
