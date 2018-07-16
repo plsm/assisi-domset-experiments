@@ -608,7 +608,7 @@ def temperature_profile_leaf (controller, first_period_length, airflow_duration,
     controller._time_length = airflow_duration + third_period_length - LED_DURATION
     flash_led (controller.casu)
     controller.reset ()
-    controller.run (time_adjustment)
+    controller.run (first_period_length + time_adjustment)
     flash_led (controller.casu)
     # stop cleanly
     controller.end ()
@@ -634,7 +634,7 @@ def temperature_profile_core (controller, first_period_length, rate_temperature_
     # third period
     controller._time_length = third_period_length
     controller.spoof_group_size = node_size
-    controller.run (0)
+    controller.run (first_period_length + airflow_duration)
     flash_led (controller.casu)
     # stop cleanly
     controller.end ()
