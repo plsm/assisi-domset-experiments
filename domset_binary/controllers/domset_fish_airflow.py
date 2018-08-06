@@ -13,6 +13,7 @@ import csv
 from math import exp
 import zmq
 
+INTERVENTION_TIME_ADJUSTMENT = 180.0
 class DomsetController(Thread):
 
     def __init__(self, rtc_file, log=False):
@@ -199,8 +200,8 @@ class DomsetController(Thread):
                             #self.nbg_data_buffer[nbg_id].pop(0)
             # calculate cumulative sensor activity of a group --> temperature control
             if (self.reset_threshold == 1.0):
-                self.time_start_cool = time.time()
-                self.time_start_heat = time.time()
+                self.time_start_cool = time.time() + INTERVENTION_TIME_ADJUSTMENT 
+                self.time_start_heat = time.time() + INTERVENTION_TIME_ADJUSTMENT
                 self.reset_threshold = 0.0
                 self.logger.writerow (["ZT", time.time (), None, self.time_start_cool, self.time_start_heat])
             self.calculate_sensor_activity()
