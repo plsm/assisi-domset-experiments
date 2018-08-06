@@ -6,9 +6,9 @@ import zmq
 
 import assisipy_utils.darc.manager
 
-import infrared_worker
+import infrared_test_worker
 from domset_binary.util import zmq_sock_utils
-import domset_binary.manager.util
+import util.video
 
 BACKGROUND_VIDEO_LENGTH = 2
 
@@ -55,14 +55,15 @@ class Infrared_Test_Manager (assisipy_utils.darc.manager.DARC_Manager):
         raw_input ('> ')
         # record video
         number_frames = self.atm_config ['video']['frames_per_second'] * self.atm_config ['parameters']['experiment_duration'] * 60
-        process_recording = domset_binary.manager.util.record_video_gstreamer (
+        process_recording = util.video.record_video_gstreamer (
             os.path.join (experiment_folder, 'video.avi'),
             number_frames,
             self.atm_config ['video']['frames_per_second'],
             self.atm_config ['video']['crop_left'],
             self.atm_config ['video']['crop_right'],
             self.atm_config ['video']['crop_top'],
-            self.atm_config ['video']['crop_bottom'])
+            self.atm_config ['video']['crop_bottom'],
+            async = True)
         # tell each arena to do the temperature profile
         self.atm_config ['parameters'][0] = infrared_test_worker.START
         for a in self.atm_config ['arenas']:

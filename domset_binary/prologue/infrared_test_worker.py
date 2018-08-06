@@ -53,10 +53,9 @@ def flash_led (casu):
     casu.set_diagnostic_led_rgb (0, 0, 0)
 
 def infrared_hit (casu, temperature_reference, experiment_duration):
-    temperature_reference = initial_temperature
     flash_led (casu)
     casu.set_temp (temperature_reference)
-    time.sleep (experiment_duration)
+    time.sleep (experiment_duration * 60)
     flash_led (casu)
 
 if __name__ == '__main__':
