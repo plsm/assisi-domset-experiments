@@ -41,7 +41,7 @@ def main ():
         main_operations (args, cfg, lwsg)
 
 def check_video (cfg):
-    number_frames = cfg ['video']['frames_per_second'] * 10
+    number_frames = cfg ['video']['frames_per_second'] * 2
     process_recording = util.record_video_gstreamer (
         'check-video-cropping.avi',
         number_frames,
