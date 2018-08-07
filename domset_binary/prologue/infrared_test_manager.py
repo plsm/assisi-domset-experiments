@@ -1,6 +1,7 @@
 
 import argparse
 import os.path
+import time
 import yaml
 import zmq
 
@@ -10,7 +11,7 @@ import infrared_test_worker
 from domset_binary.util import zmq_sock_utils
 import util.video
 
-BACKGROUND_VIDEO_LENGTH = 2
+BACKGROUND_VIDEO_LENGTH = 10
 
 class Infrared_Test_Manager (assisipy_utils.darc.manager.DARC_Manager):
     def __init__ (self, infrared_test_config_filename, arena_filename):
@@ -27,6 +28,7 @@ class Infrared_Test_Manager (assisipy_utils.darc.manager.DARC_Manager):
 
     def monitor (self):
         experiment_folder = '.'
+        fdw = open ('infrared-test-manager.log', 'w')
         # open connections
         context = zmq.Context ()
         for a in self.atm_config ['arenas']:
@@ -38,10 +40,12 @@ class Infrared_Test_Manager (assisipy_utils.darc.manager.DARC_Manager):
         for a in self.atm_config ['arenas']:
             for sn in ['sA', 'sB']:
                 zmq_sock_utils.send_recv (a [sn], [infrared_test_worker.INITIALIZE])
+        fdw.write ('{} all workers are ready\n'.format (time ()))
         # record background video
         print ('Press ENTER to record a background video')
         raw_input ('> ')
         number_frames = self.atm_config ['video']['frames_per_second'] * BACKGROUND_VIDEO_LENGTH
+        fdw.write ('{} launching background video recording'.format (time.time ()))
         util.video.record_video_gstreamer (
             os.path.join (experiment_folder, 'background.avi'),
             number_frames,
@@ -55,6 +59,7 @@ class Infrared_Test_Manager (assisipy_utils.darc.manager.DARC_Manager):
         raw_input ('> ')
         # record video
         number_frames = self.atm_config ['video']['frames_per_second'] * self.atm_config ['parameters']['experiment_duration'] * 60
+        fdw.write ('{} launching experiment video recording'.format (time.time ()))
         process_recording = util.video.record_video_gstreamer (
             os.path.join (experiment_folder, 'video.avi'),
             number_frames,
@@ -69,14 +74,19 @@ class Infrared_Test_Manager (assisipy_utils.darc.manager.DARC_Manager):
         for a in self.atm_config ['arenas']:
             print ('Starting infrared hit test for arena with CASUs {} and {}'.format (a ['A'], a ['B']))
             for sn in ['sA', 'sB']:
+                fdw.write ('{} send START command to CASU {}'.format (time.time (), a [sn [1]]))
                 zmq_sock_utils.send (a [sn], self.atm_config ['parameters'])
         for a in self.atm_config ['arenas']:
             print ('Waiting for infrared hit test in arena with CASUs {} and {} to finish'.format (a ['A'], a ['B']))
             zmq_sock_utils.recv (a ['sA'])
+            fdw.write ('{} receive START response from CASU {}'.format (time.time (), a ['A']))
             zmq_sock_utils.recv (a ['sB'])
+            fdw.write ('{} receive START response from CASU {}'.format (time.time (), a ['B']))
         # finish
         process_recording.wait ()
+        fdw.write ('{} experiment video recording finished'.format (time.time ()))
         print ('Close the window titled "{} deploy"'.format (self.project))
+        fdw.close ()
 
 def compute_used_casus (config):
     result = []

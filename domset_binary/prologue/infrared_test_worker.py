@@ -52,10 +52,17 @@ def flash_led (casu):
     time.sleep (LED_DURATION)
     casu.set_diagnostic_led_rgb (0, 0, 0)
 
+FIRST_FLASH_TIME = 15
+SECOND_FLASH_TIMED = 60
+
 def infrared_hit (casu, temperature_reference, experiment_duration):
     flash_led (casu)
     casu.set_temp (temperature_reference)
-    time.sleep (experiment_duration * 60)
+    time.sleep (FIRST_FLASH_TIME)
+    flash_led (casu)
+    time.sleep (SECOND_FLASH_TIMED - FIRST_FLASH_TIME - LED_DURATION)
+    flash_led (casu)
+    time.sleep (experiment_duration * 60 - SECOND_FLASH_TIMED - FIRST_FLASH_TIME - 2 * LED_DURATION)
     flash_led (casu)
 
 if __name__ == '__main__':
