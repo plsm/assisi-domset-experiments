@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+import os
 import os.path
 import subprocess
 import time
@@ -182,7 +183,7 @@ class InterSpecies_DOMSET_Manager (assisipy_utils.darc.manager.DARC_Manager):
         for casu_number, worker_socket in self.sockets_domset_casus.iteritems ():
             answer = domset_binary.util.zmq_sock_utils.recv (worker_socket)
             print ('Worker responsible for casu #{} responded with: {}'.format (casu_number, answer))
-        
+
 
 def create_DARC_config_file (experiment_folder, project_name, list_casus, node_CASUs, flash_casu):
     contents = {
@@ -197,8 +198,9 @@ def create_DARC_config_file (experiment_folder, project_name, list_casus, node_C
                 'casus': list_casus
             },
             'flash': {
-                'main': check_file (domset_binary.util.video_sync),
+                'main': check_file (domset_binary.util.video_sync.__file__),
                 'extra': [],
+                'args': [],
                 'results': [],
                 'casus': [flash_casu]
             }
@@ -330,4 +332,9 @@ def main ():
             ISI_path = args.ISI_path,
             test_run = args.test_run
         )
+        #os.chdir (m.experiment_folder)
+        m.create_files ()
         m.run (m.experiment_folder)
+
+if __name__ == '__main__':
+    main ()
