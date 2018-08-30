@@ -22,6 +22,9 @@ CAMERA_MARGIN_TOP = 100
 CAMERA_MARGIN_BOTTOM = 100
 
 class AbstractGenerator:
+    """
+    self.available_arena_locations dictionary that maps CASU numbers to a list of nearby CASUs.
+    """
     def __init__ (self, _graph_filename, _arena_filename, _project_name, _number_copies, _ISI_config_filename, experiment_duration):
         self.project_name = _project_name
         self.number_copies = _number_copies
@@ -125,6 +128,7 @@ class AbstractGenerator:
         self.create_arena_location_file ()
         self.create_ISI_graph_yaml_file ()
         self.create_ISI_conf_file ()
+        self.create_workers_file ()
 
     def create_ISDM_DARC_config_file (self):
         video = self.__compute_video_cropping ()
@@ -259,15 +263,33 @@ class AbstractGenerator:
     def create_arena_location_file (self):
         fn = '{}.html'.format (self.project_name)
         with open (fn, 'w') as fd:
-            fd.write ('<html><body><p>Place an arena between CASUs<ul>')
+            fd.write ('<html><body><p>Place an arena between CASUs<ul>\n')
             arenas = self.solution.values ()
             arenas.sort ()
             for v in arenas:
                 casu1 = int (v [0][-3:])
                 casu2 = int (v [1][-3:])
-                fd.write ('<li>{} and {}</li>'.format (casu1, casu2))
+                fd.write ('<li>{} and {}</li>\n'.format (casu1, casu2))
             fd.write ('</ul></p></body></html>')
             fd.close ()
+
+    def create_workers_file (self):
+        contents = {
+            'workers': [
+                {
+                    'casu_number' : casu_number,
+                    'msg_addr' : self.arena [BEE_ARENA]['casu-{:03d}'.format (casu_number)]['msg_addr'],
+                    'pub_addr' : self.arena [BEE_ARENA]['casu-{:03d}'.format (casu_number)]['pub_addr'],
+                    'sub_addr' : self.arena [BEE_ARENA]['casu-{:03d}'.format (casu_number)]['sub_addr'],
+                    'wrk_addr' : 'tcp:{}:{}'.format (self.__casu_beaglebone (casu_number), 90000 + index)
+                    }
+                    for index, casu_number in enumerate (self.__used_casus ())
+                ]
+            }
+        fn = '{}.workers'.format (self.project_name)
+        with open (fn, 'w') as fd:
+            yaml.dump (contents, fd)
+
 
     @staticmethod
     def graph_node_str (graph_index, graph_node):
@@ -280,6 +302,7 @@ class AbstractGenerator:
         result = []
         for v in self.node_CASUs.values ():
             result.extend ([int (c [-3:]) for c in v])
+        result.sort ()
         return result
 
     def __compute_video_cropping (self):
@@ -293,6 +316,10 @@ class AbstractGenerator:
             'crop_top': CAMERA_SCALE * (min (ys) + 36)/ INTER_CASU_DISTANCE + CAMERA_MARGIN_TOP
         }
         return result
+
+    def __casu_beaglebone (self, casu_number):
+        tmp = self.arena [BEE_ARENA]['casu-{:03d}'.format (casu_number)]['pub_addr']
+        return tmp.split (':')[1]
 
     def cmp_casu_keys (self, key1, key2):
         """
@@ -321,19 +348,19 @@ class ExhaustiveSearch (AbstractGenerator):
 
     def run (self):
         list_edges = self.graph.edges ()
-        if self.__main_loop (list_edges, self.available_arena_locations, 1):
+        if self.__main_loop (list_edges, self.available_arena_locations, 1, []):
             print ('Found a solution')
             self.assign_CASUs_to_nodes ()
             self.create_files ()
 
-    def __main_loop (self, list_edges, available_arena_locations, graph_index):
+    def __main_loop (self, list_edges, available_arena_locations, graph_index, assigned_CASUs):
         if len (list_edges) > 0 and len (available_arena_locations) == 0:
             return False
         elif len (list_edges) == 0:
             if graph_index == self.number_copies:
                 return True
             else:
-                return self.__main_loop (self.graph.edges (), available_arena_locations, graph_index + 1)
+                return self.__main_loop (self.graph.edges (), available_arena_locations, graph_index + 1, assigned_CASUs)
         new_list_edges = list_edges [1:]
         this_edge = list_edges [0]
         list_keys = available_arena_locations.keys ()
@@ -341,14 +368,15 @@ class ExhaustiveSearch (AbstractGenerator):
         for casu1_key in list_keys:
             casus_data = available_arena_locations [casu1_key]
             for casu2_key in casus_data:
-                print ('Trying placing edge {} in CASUs {} {}'.format (this_edge, casu1_key, casu2_key))
-                new_available_arena_locations = copy.copy (available_arena_locations)
-                del new_available_arena_locations [casu1_key]
-                if casu2_key in new_available_arena_locations:
-                    del new_available_arena_locations [casu2_key]
-                if self.__main_loop (new_list_edges, new_available_arena_locations, graph_index):
-                    self.solution [(graph_index, this_edge)] = (casu1_key, casu2_key)
-                    return True
+                if casu2_key not in assigned_CASUs:
+                    print ('Trying placing edge {} in CASUs {} {}'.format (this_edge, casu1_key, casu2_key))
+                    new_available_arena_locations = copy.copy (available_arena_locations)
+                    del new_available_arena_locations [casu1_key]
+                    if casu2_key in new_available_arena_locations:
+                        del new_available_arena_locations [casu2_key]
+                    if self.__main_loop (new_list_edges, new_available_arena_locations, graph_index, assigned_CASUs + [casu1_key, casu2_key]):
+                        self.solution [(graph_index, this_edge)] = (casu1_key, casu2_key)
+                        return True
         return False
 
 class MinimizeNodeCASUsDistance_EvolutionaryAlgorithm (AbstractGenerator):
