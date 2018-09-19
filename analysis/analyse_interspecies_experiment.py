@@ -1,4 +1,5 @@
 #!/usr/bin/python
+# -*- coding: utf-8 -*-
 
 # file structure of an inter-species experiment
 
@@ -15,15 +16,22 @@
 # run-RRR/ISIlog/data_beeArena_to_ISI.log
 # run-RRR/ISIlog/ISI_log.log
 
+import matplotlib
+matplotlib.use ("Agg")
+
 import argparse
 import csv
 import cv2
+import datetime
 import numpy
 import os.path
+import pygraphviz
 import shutil
 import subprocess
 import tempfile
 import yaml
+
+import assisipy
 
 import casu_domset_log
 import casu_log
@@ -41,12 +49,15 @@ def main ():
             base_path = args.base_path,
             working_folder = working_folder,
             delta_frame = args.delta_frame,
-            same_colour_threshold = args.same_colour_threshold)
+            same_colour_threshold = args.same_colour_threshold,
+            temperature_threshold = args.temperature_threshold,
+            number_bees_threshold = args.number_bees_threshold,
+        )
     print ('Press ENTER to remove working folder [{}]'.format (working_folder))
     raw_input ('> ')
     shutil.rmtree (working_folder)
 
-def process_experiment (graph_name, run_number, working_folder, delta_frame, same_colour_threshold, base_path = '.'):
+def process_experiment (graph_name, run_number, working_folder, delta_frame, same_colour_threshold, temperature_threshold, number_bees_threshold, base_path = '.'):
     experiment_path = os.path.join (base_path, 'run-{:03d}'.format (run_number))
     frames_path = os.path.join (experiment_path, 'frames')
     if not os.path.exists (frames_path):
@@ -81,7 +92,22 @@ def process_experiment (graph_name, run_number, working_folder, delta_frame, sam
     dict_casu_logs = read_casu_logs (config_data, experiment_path)
     dict_casu_domset_logs = read_casu_domset_logs (config_data, experiment_path)
     video_data = read_video_data (experiment_path, same_colour_threshold, delta_frame)
-
+    list_casu_numbers = [a_casu for a_casu in config_data ['controllers']['domset']['casus']]
+    list_casu_numbers.sort ()
+    video_data_column = dict ([
+        (a_casu, index)
+        for index, a_casu in enumerate (list_casu_numbers)])
+    #create_plot (config_data, experiment_path, same_colour_threshold, delta_frame, dict_casu_logs, dict_casu_domset_logs, video_data, video_data_column)
+    create_final_state_graph (
+        graph_name, run_number, config_data, experiment_path, same_colour_threshold, delta_frame,
+        temperature_threshold,
+        number_bees_threshold,
+        dict_casu_logs,
+        #dict_casu_domset_logs,
+        video_data,
+        video_data_column
+    )
+    
 def split_background_video (config_data, experiment_path):
     number_frames = config_data ['video']['frames_per_second'] * 2
     code = util.video.split_video (
@@ -221,30 +247,150 @@ def compute_bees_data (arena_data, config_data, experiment_folder, working_folde
                 experiment_folder,
                 csv_file))
 
-def create_plot (config_data, experiment_folder, same_colour_threshold, delta_frame):
-    dict_casu_logs = read_casu_logs (config_data, experiment_folder)
-    dict_casu_domset_logs = read_casu_domset_logs (config_data, experiment_folder)
-    video_data = read_video_data (experiment_folder, same_colour_threshold, delta_frame)
+def create_plot (config_data, experiment_folder, same_colour_threshold, delta_frame,
+                 dict_casu_logs, dict_casu_domset_logs, video_data,
+                 video_data_column
+):
     number_nodes = len (config_data ['graph']['node_CASUs'])
+    zero_time = numpy.mean ([
+        a_casu_log.led_actuator [2, 0]
+        for a_casu_log in dict_casu_logs.itervalues ()
+    ])
+    xs_video = [
+        zero_time + tt / float (config_data ['video']['frames_per_second'])
+        for tt in range (config_data ['experiment_duration'] * 60 * config_data ['video']['frames_per_second'])]
     # initialise plot
     figure, axes = create_figure (
-        figure_width = 14, figure_height = 9,
-        number_rows = number_nodes, number_cols = 2,
+        figure_width = 14, figure_height = 3 * number_nodes,
+        number_rows = number_nodes, number_cols = 3,
         margin_left = 0.5, margin_right = 0.1,
-        margin_top = 0.5, margin_bottom = 0.2
+        margin_top = 0.5, margin_bottom = 0.2,
+        wspace = 0.7, hspace = 0.25
         )
-    for index_axes in range (2):
-        axes [number_nodes - 1, index_axes].set_xlabel ('time (m:ss)')
-        axes [number_nodes - 1, index_axes].set_xlim (
+    ts = [t + zero_time for t in range (0, config_data ['experiment_duration'] * 60, 240)]
     for index_node in range (number_nodes):
+        axa = axes [index_node, 0]
+        axa.set_ylim (25, 39)
+        axa.set_ylabel (u'temperature (℃)', fontsize = 7)
+        axa = axes [index_node, 1]
+        axa.set_ylim (-0.03, 1.03)
+        axa.set_ylabel ('casu activity (a.u.)', fontsize = 7)
+        axa = axes [index_node, 2]
+        axa.set_ylim (0, 9000)
+        axa.set_ylabel ('# bees (px)', fontsize = 7)
+        for axa in [axes [index_node, index_axes] for index_axes in range (3)]:
+            axa.set_xlim (zero_time, zero_time + config_data ['experiment_duration'] * 60)
+            axa.set_xticks (ts)
+            if index_node == number_nodes - 1:
+                axa.set_xlabel ('time (m:ss)')
+                axa.set_xticklabels ([datetime.datetime.fromtimestamp (t - ts [0]).strftime ('%M:%S') for t in ts])
+                for tick in axa.xaxis.get_major_ticks ():
+                    tick.label.set_fontsize (6)
+            else:
+                axa.set_xticklabels ([])
+            for tick in axa.yaxis.get_major_ticks ():
+                tick.label.set_fontsize (6)
+    node_CASUs = [a_node for a_node in config_data ['graph']['node_CASUs']]
+    node_CASUs.sort ()
+    for index_node, a_node in enumerate (node_CASUs):
+        # plot node
+        list_casus = [a_casu for a_casu in config_data ['graph']['node_CASUs'][a_node]]
+        list_casus.sort ()
+        title = '{} ({})'.format (a_node, ' '.join ([str (c) for c in list_casus]))
+        for axa in [axes [index_node, index_axes] for index_axes in range (3)]:
+            axa.set_title (title, fontsize = 7)
+        print (index_node, a_node, list_casus)
+        print (config_data ['graph']['node_CASUs'][a_node])
+        for index_casu, a_casu in enumerate (config_data ['graph']['node_CASUs'][a_node]):
+            dict_casu_logs [a_casu].plot (
+                index_casu,
+                {
+                    casu_log.TEMP : [axes [index_node, 0]],
+                    casu_log.PELTIER: [axes [index_node, 0]],
+                    casu_log.LED: [axes [index_node, 0], axes [index_node, 1]],
+                    casu_log.AIRFLOW : [axes [index_node, 0], axes [index_node, 1]]
+                },
+                avg_temp = False,
+                temp_field = [assisipy.casu.TEMP_WAX],
+                peltier_colour = '#1F2F00',
+            )
+            dict_casu_domset_logs [a_casu].plot (
+                index_casu,
+                {
+                    casu_domset_log.CAC : [axes [index_node, 1]]
+                }
+            )
+            axes [index_node, 2].plot (
+                xs_video,
+                video_data [:, 2 * video_data_column [a_casu]],
+                '-')
+    figure.suptitle ('interspecies domset\n{}'.format (experiment_folder), fontsize = 9)
+    figure.savefig ('interspecies-domset.png'.format ())
+    matplotlib.pyplot.close (figure)
+
+def create_final_state_graph (
+        graph_name, run_number, config_data, experiment_path,
+        same_colour_threshold, delta_frame,
+        temperature_threshold,
+        number_bees_threshold,
+        dict_casu_logs,
+                              #, dict_casu_domset_logs
+        video_data,
+        video_data_column,
+        number_bees_sliding_window = 100
+):
+    fs = pygraphviz.AGraph (strict = True, directed = False)
+    list_nodes = [a_node for a_node in config_data ['graph']['node_CASUs']]
+    list_nodes.sort ()
+    for index_node, a_node in enumerate (list_nodes):
+        node_casus = config_data ['graph']['node_CASUs'][a_node]
+        master_casu = max (node_casus)
+        node_temperature = dict_casu_logs [master_casu].temperature [-1][1 + assisipy.casu.TEMP_WAX - assisipy.casu.TEMP_F]
+        win1 = node_temperature > temperature_threshold
+        win2 = 0
+        for a_casu in config_data ['graph']['node_CASUs'][a_node]:
+            value = video_data [-number_bees_sliding_window:-1, 2 * video_data_column [a_casu]].mean ()
+            print ('Using number of bees value {} for casu {} that belongs to node {}'.format (value, a_casu, a_node))
+            if value > number_bees_threshold:
+                win2 += 1
+        layer = fs.add_node (
+            a_node,
+            label = chr (index_node + ord ('A')),
+            color = 'red' if win1 else 'blue',
+            penwidth = 1 + ((1 + win2) if win2 > 0 else 0)
+        )
+    for an_edge in config_data ['graph']['edges']:
+        fs.add_edge (an_edge [0], an_edge [1])
+    filename = 'interspecies-domset_final-state-graph_{}-{}-{}-{}.gv'.format (graph_name, run_number, temperature_threshold, number_bees_threshold)
+    fs.write (filename)
+
 
 def create_figure (figure_width, figure_height, number_rows, number_cols,
-                       margin_left, margin_right, margin_top, margin_bottom):
+                       margin_left, margin_right, margin_top, margin_bottom,
+                   wspace = 0.05, hspace = 0.05
+):
     figure = matplotlib.pyplot.figure (figsize = (figure_width, figure_height))
-    axes = figure.subplots (
+    axes = []
+    axe_width = (figure_width - margin_left - margin_right - (number_cols - 1) * wspace) / number_cols
+    axe_height = (figure_height - margin_top - margin_bottom - (number_rows - 1) * hspace) / number_rows
+    for i_row in range (number_rows):
+        row = []
+        for i_col in range (number_cols):
+            rect = (
+                (margin_left + i_col * (axe_width + wspace)) / figure_width,
+                (margin_bottom + (number_rows - i_row - 1) * (axe_height + hspace)) / figure_height,
+                axe_width / figure_width,
+                axe_height / figure_height
+                )
+            row.append (figure.add_axes (rect))
+            #row.append (figure.add_subplot (number_rows, number_cols, i_row + i_col * number_rows + 1))
+        axes.append (row)
+    axes = numpy.array (axes)
+    if False:
+      axes = figure.subplots (
         nrows = number_rows,
         ncols = number_cols,
-#            'width_ratios' : [2, 2],
+        gridspec_kw = {
             'right' : 1 - margin_right / figure_width,
             'left' : margin_left / figure_width,
             'top' : 1 - margin_top / figure_height,
@@ -326,6 +472,20 @@ def process_arguments ():
         type = int,
         required = True,
         help = 'Threshold used when comparing two images for differences'
+    )
+    parser.add_argument (
+        '--temperature-threshold',
+        metavar = 'T',
+        type = int,
+        default = 34,
+        help = 'Threshold used when deciding if a node is part of a DOMSET solution (the master casu temperature is high enough)'
+    )
+    parser.add_argument (
+        '--number-bees-threshold',
+        metavar = 'P',
+        type = int,
+        default = 3000,
+        help = 'Threshold used when deciding if a casu node is part of a DOMSET solution (it has enough bees around it)'
     )
     return parser.parse_args ()
 
